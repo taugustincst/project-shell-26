@@ -263,6 +263,70 @@ test('no stars for a set where the player never acted', () => {
   g.blends = 1; assert.ok(E.goalsMet(g).some(Boolean), 'the clean set and kit time count once a blend happened');
 });
 
+// ---------- sharing beats ----------
+test('a beat survives export and import exactly, even pasted inside a message', () => {
+  const p = E.clonePattern(E.packById('starter')); p.name = 'Bé 🎧 late night'; p.swing = 0.23; p.bpm = 101; p.own = true;
+  p.lanes.lead[3] = 7; p.lanes.bass[0] = 2;
+  const code = E.exportBeat(p);
+  assert.ok(code.startsWith(E.SHARE_PREFIX + '.'));
+  const r = E.importCode('Try my beat:\n' + code.slice(0, 30) + '\n' + code.slice(30) + ' 🔥');
+  assert.ok(r.ok, r.error); assert.strictEqual(r.kind, 'beat');
+  assert.deepStrictEqual(J(r.pattern), J(E.normalizePattern(p)));
+});
+test('the whole Lab (8 slots and the track) survives export and import', () => {
+  const a = E.clonePattern(E.packById('starter')), b = E.clonePattern(E.packById('dust-shuffle'));
+  const slots = [a, null, b, null, null, null, null, a];
+  const r = E.importCode(E.exportLab(slots, [2, 0, 7, 1]));
+  assert.ok(r.ok); assert.strictEqual(r.kind, 'lab');
+  assert.strictEqual(r.slots.length, E.MAX_SLOTS);
+  assert.deepStrictEqual(J(r.slots.map(x => x && x.name)), J(slots.map(x => x && x.name)));
+  assert.deepStrictEqual(J(r.slots[2].lanes), J(b.lanes));
+  assert.deepStrictEqual(J(r.chain), [2, 0, 7], 'chain entries for empty slots are dropped');
+});
+test('a damaged, truncated, foreign or newer code is refused with a reason, never half-imported', () => {
+  const code = E.exportBeat(E.packById('starter'));
+  const mid = code.indexOf('.') + 10, flipped = code.slice(0, mid) + (code[mid] === 'A' ? 'B' : 'A') + code.slice(mid + 1);
+  assert.strictEqual(E.importCode(flipped).error, 'damaged');
+  assert.strictEqual(E.importCode(code.slice(0, -8)).error, 'no-code');
+  assert.strictEqual(E.importCode('hello there').error, 'no-code');
+  assert.strictEqual(E.importCode('').error, 'empty');
+  assert.strictEqual(E.importCode(code.replace(/^PD1/, 'PD2')).error, 'newer');
+  assert.strictEqual(E.importCode('x'.repeat(60000)).error, 'too-big');
+  for (const k of ['empty', 'no-code', 'newer', 'too-big', 'damaged']) assert.ok(E.IMPORT_ERRORS[k]);
+});
+test('imported values are clamped like any saved beat', () => {
+  // a hand-made code with out-of-range values still opens as a valid beat
+  const body = Buffer.from(JSON.stringify({ t: 'beat', p: { n: '', k: 'nope', b: 999, w: 500, l: { kick: '9x10000000000000', bass: '9999999999999999' } } })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  let h = 2166136261; for (let i = 0; i < body.length; i++) { h ^= body.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const code = 'PD1.' + body + '.' + ('0000' + ((h >>> 0) & 0xffff).toString(16)).slice(-4);
+  const r = E.importCode(code);
+  assert.ok(r.ok, r.error);
+  assert.strictEqual(r.pattern.kit, E.KITS[0].id); assert.strictEqual(r.pattern.bpm, 160); assert.ok(r.pattern.swing <= 0.6);
+  assert.strictEqual(r.pattern.lanes.kick[0], 1); assert.strictEqual(r.pattern.lanes.bass[0], E.NOTES);
+  assert.strictEqual(r.pattern.name, 'New beat');
+});
+
+// ---------- your sets (recordings library) ----------
+test('the recordings library keeps sets up to its count and size caps', () => {
+  let list = [];
+  for (let i = 0; i < E.REC_MAX_COUNT; i++) { assert.ok(E.recRoom(list, 1000).ok); list.push({ id: 'r' + i, name: 'S' + i, created: i, size: 1000 }); }
+  assert.strictEqual(E.recRoom(list, 1000).reason, 'count');
+  assert.strictEqual(E.recRoom([{ id: 'a', size: E.REC_MAX_BYTES - 10 }], 100).reason, 'bytes');
+  assert.strictEqual(E.recRoom([], E.REC_MAX_BYTES + 1).reason, 'too-long');
+  assert.deepStrictEqual(J(E.recUsage(list)), { count: E.REC_MAX_COUNT, bytes: E.REC_MAX_COUNT * 1000 });
+});
+test('sets list newest first, rename cleanly and delete', () => {
+  let list = [{ id: 'a', name: 'Practice set 1', created: 1, size: 5 }, { id: 'b', name: 'Rooftop Party set 1', created: 9, size: 5 }];
+  assert.deepStrictEqual(J(E.recSorted(list).map(r => r.id)), ['b', 'a']);
+  assert.strictEqual(E.recDefaultName(list, null), 'Practice set 2');
+  assert.strictEqual(E.recDefaultName(list, 'Warehouse'), 'Warehouse set 1');
+  list = E.recRename(list, 'a', '  Sunday   ' + 'x'.repeat(60));
+  assert.strictEqual(list[0].name.length, 40); assert.ok(list[0].name.startsWith('Sunday'));
+  assert.strictEqual(E.recRename(list, 'b', '   ')[1].name, 'Rooftop Party set 1', 'a blank rename keeps the old name');
+  list = E.recRemove(list, 'a');
+  assert.deepStrictEqual(J(list.map(r => r.id)), ['b']);
+});
+
 // ---------- progress and the free/full road ----------
 test('only Bedroom Stream is open at the start; each clear opens the next', () => {
   const p = E.newProgress();

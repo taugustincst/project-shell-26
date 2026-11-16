@@ -2,8 +2,8 @@
 
 Make your own beats, mix them live on two decks, and play your way from a bedroom stream to the Main Stage.
 
-- **Lab:** a 16-step sequencer with eight lanes (kick, snare, clap, hi-hat, open hat, perc, bass, lead), four synthesized kits, tempo and swing, eight save slots, and chaining beats into a full track. Every sound is made on the phone with Web Audio: no samples.
-- **Decks:** two decks with play, sync, loop, stutter, cue (tap to jump back, hold to set), a spring-loaded filter, a crossfader, echo and a riser. Record your set and save or share it.
+- **Lab:** a 16-step sequencer with eight lanes (kick, snare, clap, hi-hat, open hat, perc, bass, lead), four synthesized kits, tempo and swing, eight save slots, chaining beats into a full track, and Share beat / Import beat to move a beat or the whole Lab to another phone as a code or file. Every sound is made on the phone with Web Audio: no samples.
+- **Decks:** two decks with play, sync, loop, stutter, cue (tap to jump back, hold to set), a spring-loaded filter, a crossfader, echo and a riser. Record your set; every set is kept in Your sets on the phone, where you can play, rename, delete, save or share it.
 - **Gigs:** six venues, each with a crowd to win and three stars. Clean blends and drops landed on the 1 lift the crowd; a tired track or two clashing beats lose it. Clearing venues opens kits, lanes and effects and climbs the ranks from Bedroom DJ to Headliner.
 
 ## Play

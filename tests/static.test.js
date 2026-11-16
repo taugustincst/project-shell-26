@@ -63,7 +63,8 @@ function elementTag(id) {
 test('required elements exist', () => {
   for (const id of ['ladder', 'venueMap', 'rankPips', 'rankTitle', 'rankNext', 'home', 'btnStart', 'viewLab', 'pads', 'overview', 'kits', 'slots', 'chain',
     'viewDecks', 'xf', 'gigHud', 'crowd', 'goals', 'coach', 'fxEcho', 'fxRiser', 'btnRec', 'viewGigs', 'venues', 'tabs',
-    'results', 'unlock', 'btnBuy', 'btnRestore', 'unlockWeb', 'settings', 'tSound', 'tMotion', 'tBig', 'btnReset', 'btnRestore2', 'pause', 'venueSheet', 'library', 'slotSheet', 'recSheet']) {
+    'results', 'unlock', 'btnBuy', 'btnRestore', 'unlockWeb', 'settings', 'tSound', 'tMotion', 'tBig', 'btnReset', 'btnRestore2', 'pause', 'venueSheet', 'library', 'slotSheet', 'recSheet',
+    'btnSets', 'btnSets2', 'setsSheet', 'btnShareBeat', 'btnImport', 'shareSheet', 'importSheet', 'importFile']) {
     assert.ok(elementTag(id), 'missing #' + id);
   }
 });
@@ -73,7 +74,7 @@ test('the long-term ladder and venue road are visible on the first screen', () =
   assert.ok(ladderAt > 0 && ladderAt < firstSheet, 'ladder sits in the main layout, not inside a sheet');
 });
 test('overlay sheets start hidden', () => {
-  for (const id of ['results', 'unlock', 'settings', 'pause', 'venueSheet', 'library', 'slotSheet', 'recSheet', 'gigHud']) assert.ok(/\shidden\b/.test(elementTag(id)), '#' + id + ' should start hidden');
+  for (const id of ['results', 'unlock', 'settings', 'pause', 'venueSheet', 'library', 'slotSheet', 'recSheet', 'gigHud', 'setsSheet', 'shareSheet', 'importSheet']) assert.ok(/\shidden\b/.test(elementTag(id)), '#' + id + ' should start hidden');
 });
 test('monetization: one product, billing bridge contract, playtest switch, no ads', () => {
   assert.ok(html.includes("'full_unlock'"));
@@ -104,6 +105,28 @@ test('every sound is synthesized: no audio files or samples', () => {
 test('recordings are saved without building a link in markup', () => {
   assert.ok(html.includes("setAttribute('download'"));
   assert.ok(html.includes('MediaRecorder'));
+});
+
+test('your sets: recordings are kept in IndexedDB on the phone, with caps, and can be played, renamed, deleted, saved and shared', () => {
+  assert.ok(/indexedDB\.open\('pocketdecks'/.test(html), 'opens an on-device database');
+  assert.ok(/createObjectStore\('recordings'/.test(html), 'recordings store');
+  for (const fn of ['loadRecList', 'recPut', 'recGet', 'recDelete', 'recRenameStored', 'openSets', 'openSet', 'keepRecording']) assert.ok(new RegExp('function ' + fn + '\\(').test(html), 'missing ' + fn);
+  assert.ok(/E\.recRoom\(/.test(html), 'checks the storage caps before keeping a set');
+  assert.ok(/data-a="del"/.test(html) && /data-a="share"/.test(html) && /data-a="save"/.test(html), 'delete, share and save actions');
+});
+test('beat sharing is player-initiated only: export to a code or file, import from paste or a local file, no network', () => {
+  assert.ok(/E\.exportBeat\(/.test(html) && /E\.exportLab\(/.test(html) && /E\.importCode\(/.test(html));
+  assert.ok(/FileReader/.test(html), 'reads an imported file locally');
+  assert.ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource/.test(html), 'no network calls');
+  assert.ok(/id="importFile"[^>]*type="file"/.test(html), 'file picker for import');
+});
+test('the unlock is never written into saves or exports', () => {
+  const ui = html.slice(html.indexOf('/* ENGINE:END */'));
+  const saveFn = ui.slice(ui.indexOf('function save()'), ui.indexOf('function saveSoon'));
+  assert.ok(!/unlock|owned/i.test(saveFn), 'save() must not write the unlock');
+  const eng = html.slice(html.indexOf('/* ENGINE:BEGIN */'), html.indexOf('/* ENGINE:END */'));
+  const exp = eng.slice(eng.indexOf('function packPattern'), eng.indexOf('function importCode'));
+  assert.ok(!/unlock|owned/i.test(exp), 'exports must not carry the unlock');
 });
 
 console.log(`static tests: ${pass} passed, ${fail} failed`);

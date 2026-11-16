@@ -30,7 +30,8 @@ In the Play app the page receives `window.AndroidBilling` with `start(productId)
 - `pocketdecks.unlock`: `'1'` when Play has confirmed the purchase (cache only).
 - `pocketdecks.playtest`: see below.
 
-Recordings are never stored by the game; the player saves or shares each one.
+- **Your sets (recordings library):** every set the player records is kept in the app, in the page's IndexedDB (database `pocketdecks`, store `recordings`: id, name, date, length, type, size, audio blob). Your sets lists them newest first, and each set can be played, renamed, deleted, saved as a file or shared. Caps: 20 sets and 50 MB in total; when a new set would go over, the game says so and still offers Save file and Share for that set. Reset progress does not delete sets. Nothing is uploaded.
+- **Sharing beats:** in the Lab, Share beat turns the beat being edited, or the whole Lab (8 slots and the track), into a plain-text code (`PD1.<base64url JSON>.<checksum>`). The player copies it, saves it as a `.txt` file or hands it to the share sheet. Import beat takes a pasted code (surrounding text is fine) or opens a `.txt` file, checks the version and checksum, clamps every value like a saved beat, and either opens the beat in the Lab or replaces / fills the slots. A beat on a kit the player has not opened plays on Basement. Codes carry beats only: never progress, the unlock or anything about the player.
 
 ## Playtest switch (decide before packaging)
 
@@ -40,7 +41,9 @@ Recordings are never stored by the game; the player saves or shares each one.
 
 - Audio starts on the first tap (Web Audio needs a user gesture); the wrapper should allow media playback without a gesture or leave it as is.
 - Recording uses `MediaRecorder` on the page's own audio. No microphone permission is needed or asked for.
-- Saving a recording uses a download link; the wrapper needs a download handler, or the Share button (Web Share with files) where the WebView supports it.
+- Saving a recording or a beat file uses a download link; the wrapper needs a download handler, or the Share buttons (Web Share with files or text) where the WebView supports it.
+- Your sets needs IndexedDB in the WebView (on by default with DOM storage enabled). If it is missing, recording still works and the game offers Save file and Share for each set.
+- Import beat opens a file with `<input type=file>`; the wrapper needs `onShowFileChooser`, or players paste the code instead.
 - The page pauses a gig and stops sound when it is hidden.
 
 ## Left before a Play listing (owner and Folder)
@@ -49,5 +52,5 @@ Recordings are never stored by the game; the player saves or shares each one.
 2. Decide the playtest switch.
 3. Store listing: title, descriptions, icon, feature graphic, portrait screenshots (the Lab grid and a live gig with the crowd bar make good shots).
 4. Content rating questionnaire (expected Everyone: no violence, gambling or mature themes; user-made music only, nothing shared from inside the app).
-5. Data safety: no data collected or shared; no network access; beats and progress stay on the device.
+5. Data safety: no data collected or shared by the app; no network access; beats, sets and progress stay on the device. Players can export beats and sets themselves through the share sheet or a file.
 6. Phone playtest on a real device for audio latency and speaker loudness.

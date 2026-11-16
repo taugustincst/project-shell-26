@@ -158,7 +158,7 @@ body.live #gigHud { padding: 10px 12px; margin-bottom: 8px; }
 .deck .bpmv { text-align: center; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .xf { margin-top: 10px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-weight: 800; }
 .xf .A { color: var(--a); } .xf .B { color: var(--b); }
-.fx { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.fx { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
 .fx button.on { background: var(--acc2); color: #160f05; }
 #btnRec.on { background: var(--bad); color: #fff; }
 /* gigs */
@@ -193,6 +193,10 @@ body.live #gigHud { padding: 10px 12px; margin-bottom: 8px; }
 body.reduce *, body.reduce *::before { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) { .pulse, #flash.show, .confetti i { animation: none; } }
 @media (min-width: 560px) { #pads { gap: 10px; } .pad { aspect-ratio: 1.6; } }
+textarea.code { width: 100%; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; background: #0f0c18; color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 10px; word-break: break-all; resize: vertical; }
+.warn { color: var(--acc2); }
+button.danger { border-color: var(--bad); color: var(--bad); }
+.list button b { font-weight: 600; }
 </style>
 </head>
 <body>
@@ -246,6 +250,10 @@ body.reduce *, body.reduce *::before { animation: none !important; transition: n
       <h3>Your beats</h3>
       <input id="beatName" type="text" maxlength="24" aria-label="Beat name" value="Starter Groove">
       <div id="slots" class="slots" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnShareBeat" class="ghost">Share beat</button>
+        <button id="btnImport" class="ghost">Import beat</button>
+      </div>
       <h3>Your track</h3>
       <div class="tiny muted">Chain beats into a full track. Tap a saved beat, then Add to track.</div>
       <div id="chain"></div>
@@ -274,6 +282,7 @@ body.reduce *, body.reduce *::before { animation: none !important; transition: n
         <button id="fxEcho">Echo</button>
         <button id="fxRiser">Riser</button>
         <button id="btnRec">Rec</button>
+        <button id="btnSets" aria-label="Your sets">Sets</button>
       </div>
     </section>
 
@@ -298,6 +307,10 @@ body.reduce *, body.reduce *::before { animation: none !important; transition: n
 <div id="library" class="sheet" hidden><div class="body"></div></div>
 <div id="slotSheet" class="sheet" hidden><div class="body"></div></div>
 <div id="recSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="setsSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="shareSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="importSheet" class="sheet" hidden><div class="body"></div></div>
+<input id="importFile" type="file" accept=".txt,text/plain" hidden aria-hidden="true">
 <div id="pause" class="sheet" hidden><div class="body">
   <h2>Paused</h2>
   <p class="muted">The crowd waits. Your set picks up right where it stopped.</p>
@@ -322,9 +335,10 @@ body.reduce *, body.reduce *::before { animation: none !important; transition: n
   <div class="toggle"><span>Sound</span><button id="tSound">On</button></div>
   <div class="toggle"><span>Reduce motion</span><button id="tMotion">Off</button></div>
   <div class="toggle"><span>Larger text</span><button id="tBig">Off</button></div>
+  <div class="actions"><button id="btnSets2">Your sets</button></div>
   <div class="actions"><button id="btnRestore2">Restore purchase</button><button id="btnShowUnlock">Full game</button></div>
   <div class="actions"><button id="btnReset" class="ghost">Reset progress</button></div>
-  <p class="tiny muted">Pocket Decks by AugustInnovations. Every sound is made on your phone as you play: no samples, no ads, no network. Your beats stay on this device.</p>
+  <p class="tiny muted">Pocket Decks by AugustInnovations. Every sound is made on your phone as you play: no samples, no ads, no network. Your beats and sets stay on this device unless you share them.</p>
   <div class="actions"><button id="btnSettingsClose" class="primary">Done</button></div>
 </div></div>
 
@@ -963,6 +977,123 @@ var Engine = (function () {
     return g;
   }
 
+  // ---------- sharing beats: a plain-text code the player copies, saves as a file or shares ----------
+  // Nothing leaves the phone unless the player exports it. The code is versioned and checksummed so a
+  // mangled paste is caught instead of half-imported.
+  var SHARE_PREFIX = 'PD1', SHARE_MAX = 24000;
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function utf8Bytes(str) {
+    var out = [];
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) { var d = str.charCodeAt(i + 1); if (d >= 0xdc00 && d < 0xe000) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; } }
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | c >> 6, 0x80 | c & 63);
+      else if (c < 0x10000) out.push(0xe0 | c >> 12, 0x80 | c >> 6 & 63, 0x80 | c & 63);
+      else out.push(0xf0 | c >> 18, 0x80 | c >> 12 & 63, 0x80 | c >> 6 & 63, 0x80 | c & 63);
+    }
+    return out;
+  }
+  function utf8String(b) {
+    var s = '', i = 0;
+    while (i < b.length) {
+      var c = b[i++];
+      if (c >= 0xf0) c = (c & 7) << 18 | (b[i++] & 63) << 12 | (b[i++] & 63) << 6 | b[i++] & 63;
+      else if (c >= 0xe0) c = (c & 15) << 12 | (b[i++] & 63) << 6 | b[i++] & 63;
+      else if (c >= 0xc0) c = (c & 31) << 6 | b[i++] & 63;
+      if (c > 0xffff) { c -= 0x10000; s += String.fromCharCode(0xd800 + (c >> 10), 0xdc00 + (c & 1023)); } else s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function b64enc(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 3) {
+      var n = bytes[i] << 16 | (bytes[i + 1] || 0) << 8 | (bytes[i + 2] || 0);
+      s += B64[n >> 18 & 63] + B64[n >> 12 & 63] + (i + 1 < bytes.length ? B64[n >> 6 & 63] : '') + (i + 2 < bytes.length ? B64[n & 63] : '');
+    }
+    return s;
+  }
+  function b64dec(s) {
+    var out = [], buf = 0, bits = 0;
+    for (var i = 0; i < s.length; i++) {
+      var v = B64.indexOf(s.charAt(i)); if (v < 0) return null;
+      buf = buf << 6 | v; bits += 6;
+      if (bits >= 8) { bits -= 8; out.push(buf >> bits & 255); }
+    }
+    return out;
+  }
+  function checksum(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul ? Math.imul(h, 16777619) : (h * 16777619) | 0; } return ('0000' + ((h >>> 0) & 0xffff).toString(16)).slice(-4); }
+  function packPattern(p) {
+    var n = normalizePattern(p), l = {};
+    for (var i = 0; i < LANES.length; i++) { var row = n.lanes[LANES[i].id], str = '', any = false; for (var s = 0; s < STEPS; s++) { str += row[s]; if (row[s]) any = true; } if (any) l[LANES[i].id] = str; }
+    return { n: n.name, k: n.kit, b: n.bpm, w: Math.round(n.swing * 100), o: n.own ? 1 : 0, l: l };
+  }
+  function unpackPattern(c) {
+    if (!c || typeof c !== 'object') return null;
+    var lanes = {};
+    if (c.l && typeof c.l === 'object') for (var id in c.l) if (Object.prototype.hasOwnProperty.call(c.l, id) && typeof c.l[id] === 'string') lanes[id] = c.l[id].split('').map(Number);
+    return normalizePattern({ name: c.n, kit: kitById(c.k) ? c.k : KITS[0].id, bpm: c.b, swing: (+c.w || 0) / 100, own: c.o !== 0, lanes: lanes });
+  }
+  function wrapShare(obj) { var body = b64enc(utf8Bytes(JSON.stringify(obj))); return SHARE_PREFIX + '.' + body + '.' + checksum(body); }
+  function exportBeat(p) { return wrapShare({ t: 'beat', p: packPattern(p) }); }
+  function exportLab(slots, chain) {
+    var s = [];
+    for (var i = 0; i < MAX_SLOTS; i++) s.push(slots && slots[i] ? packPattern(slots[i]) : 0);
+    var c = (chain || []).filter(function (x) { return x >= 0 && x < MAX_SLOTS && s[x]; }).slice(0, MAX_CHAIN);
+    return wrapShare({ t: 'lab', s: s, c: c });
+  }
+  // reads a code out of whatever was pasted or opened (a message, a file); never throws
+  function importCode(text) {
+    if (typeof text !== 'string' || !text) return { ok: false, error: 'empty' };
+    if (text.length > SHARE_MAX * 2) return { ok: false, error: 'too-big' };
+    var m = /PD(\d+)\.([A-Za-z0-9_-]+)\.([0-9a-f]{4})/.exec(text.replace(/\s+/g, ''));
+    if (!m) return { ok: false, error: 'no-code' };
+    if (m[1] !== '1') return { ok: false, error: 'newer' };
+    if (m[2].length > SHARE_MAX) return { ok: false, error: 'too-big' };
+    if (checksum(m[2]) !== m[3]) return { ok: false, error: 'damaged' };
+    var bytes = b64dec(m[2]), obj;
+    try { obj = JSON.parse(utf8String(bytes)); } catch (e) { return { ok: false, error: 'damaged' }; }
+    if (!obj || typeof obj !== 'object') return { ok: false, error: 'damaged' };
+    if (obj.t === 'beat') { var p = unpackPattern(obj.p); return p ? { ok: true, kind: 'beat', pattern: p } : { ok: false, error: 'damaged' }; }
+    if (obj.t === 'lab' && Array.isArray(obj.s)) {
+      var slots = [];
+      for (var i = 0; i < MAX_SLOTS; i++) slots.push(obj.s[i] ? unpackPattern(obj.s[i]) : null);
+      var chain = (Array.isArray(obj.c) ? obj.c : []).map(function (x) { return x | 0; }).filter(function (x) { return x >= 0 && x < MAX_SLOTS && slots[x]; }).slice(0, MAX_CHAIN);
+      if (!slots.some(Boolean)) return { ok: false, error: 'empty' };
+      return { ok: true, kind: 'lab', slots: slots, chain: chain };
+    }
+    return { ok: false, error: 'damaged' };
+  }
+  var IMPORT_ERRORS = {
+    empty: 'Paste a beat code or open a beat file first.',
+    'no-code': 'No beat code found. Codes start with PD1.',
+    newer: 'That code is from a newer Pocket Decks. Update the app to open it.',
+    'too-big': 'That is too big to be a beat code.',
+    damaged: 'That code is damaged. Copy the whole code and try again.'
+  };
+
+  // ---------- the recordings library (the audio itself lives in the page's IndexedDB) ----------
+  var REC_MAX_COUNT = 20, REC_MAX_BYTES = 50 * 1024 * 1024;
+  function recUsage(list) { var b = 0; for (var i = 0; i < list.length; i++) b += list[i].size || 0; return { count: list.length, bytes: b }; }
+  function recRoom(list, size) {
+    var u = recUsage(list);
+    if (size > REC_MAX_BYTES) return { ok: false, reason: 'too-long' };
+    if (u.count >= REC_MAX_COUNT) return { ok: false, reason: 'count' };
+    if (u.bytes + size > REC_MAX_BYTES) return { ok: false, reason: 'bytes' };
+    return { ok: true };
+  }
+  function recName(name, fallback) { var n = typeof name === 'string' ? name.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40) : ''; return n || fallback || 'My set'; }
+  function recDefaultName(list, venueName) {
+    var base = venueName ? venueName + ' set' : 'Practice set', n = 1;
+    var names = list.map(function (r) { return r.name; });
+    while (names.indexOf(base + ' ' + n) >= 0) n++;
+    return base + ' ' + n;
+  }
+  function recSorted(list) { return list.slice().sort(function (a, b) { return (b.created || 0) - (a.created || 0); }); }
+  function recRename(list, id, name) { return list.map(function (r) { return r.id === id ? Object.assign({}, r, { name: recName(name, r.name) }) : r; }); }
+  function recRemove(list, id) { return list.filter(function (r) { return r.id !== id; }); }
+  function fmtBytes(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
   return {
     STEPS: STEPS, SAVE_VERSION: SAVE_VERSION, MAX_SLOTS: MAX_SLOTS, MAX_CHAIN: MAX_CHAIN, NOTES: NOTES,
     LANES: LANES, KITS: KITS, EFFECTS: EFFECTS, VENUES: VENUES, RANKS: RANKS, REWARDS: REWARDS, FREE_VENUES: FREE_VENUES,
@@ -980,6 +1111,9 @@ var Engine = (function () {
     nextUnlock: nextUnlock, library: library,
     createGig: createGig, tickGig: tickGig, setCrossfader: setCrossfader, setFilter: setFilter, setEcho: setEcho,
     audibleGain: audibleGain, deckLevel: deckLevel, mainDeck: mainDeck, venueTaste: venueTaste, goalProgress: goalProgress,
+    exportBeat: exportBeat, exportLab: exportLab, importCode: importCode, IMPORT_ERRORS: IMPORT_ERRORS, SHARE_PREFIX: SHARE_PREFIX,
+    REC_MAX_COUNT: REC_MAX_COUNT, REC_MAX_BYTES: REC_MAX_BYTES, recUsage: recUsage, recRoom: recRoom, recName: recName, recDefaultName: recDefaultName,
+    recSorted: recSorted, recRename: recRename, recRemove: recRemove, fmtBytes: fmtBytes,
     goalsMet: goalsMet, crowdRating: crowdRating, playerActed: playerActed, CLASH_COST: CLASH_COST, gigResult: gigResult, applyResult: applyResult, restoreGig: restoreGig, tense: tense
   };
 })();
@@ -1818,6 +1952,159 @@ var Engine = (function () {
     setTab('Gigs');
   }
 
+  // ---------- files: save to the phone, or hand to the share sheet ----------
+  function fileSlug(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'pocket-decks'; }
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.setAttribute('href', url); link.setAttribute('download', name); document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+  function shareFile(blob, name, type, title) {
+    try {
+      var file = new File([blob], name, { type: type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: title }).catch(function () { });
+      else toast('Sharing files is not supported here. Use Save file.');
+    } catch (err) { toast('Sharing is not available here.'); }
+  }
+
+  // ---------- sharing beats: export and import codes ----------
+  // A code only goes where the player sends it: no account, no server, nothing uploaded.
+  function fitImported(p) {
+    if (E.canUse(progress, owned(), 'kit', p.kit)) return '';
+    var name = (E.kitById(p.kit) || {}).name || 'that kit'; p.kit = 'basement'; return name;
+  }
+  function openShare() {
+    var b = $('shareSheet').firstElementChild, saved = lab.slots.filter(Boolean).length;
+    b.innerHTML = '<h2>Share your beats</h2><p class="muted">Turn a beat into a code anyone with Pocket Decks can paste into Import beat. It only goes where you send it.</p><div class="list">' +
+      '<button data-a="beat"><span>This beat: ' + esc(lab.pattern.name) + '</span><span>&rsaquo;</span></button>' +
+      '<button data-a="lab"' + (saved ? '' : ' disabled') + '><span>Your whole Lab: ' + saved + ' saved beat' + (saved === 1 ? '' : 's') + (lab.chain.length ? ' and your track' : '') + '</span><span>&rsaquo;</span></button>' +
+      '</div><div class="actions"><button data-a="close">Close</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a || a.disabled) return;
+      if (a.dataset.a === 'beat') showCode(E.exportBeat(lab.pattern), lab.pattern.name, 'beat');
+      else if (a.dataset.a === 'lab') showCode(E.exportLab(lab.slots, lab.chain), 'my-lab', 'lab');
+      else hideSheet('shareSheet');
+    };
+    showSheet('shareSheet');
+  }
+  function showCode(code, name, kind) {
+    var b = $('shareSheet').firstElementChild, text = (kind === 'lab' ? 'My Pocket Decks Lab' : 'My Pocket Decks beat "' + name + '"') + ': ' + code;
+    b.innerHTML = '<h2>' + (kind === 'lab' ? 'Your Lab as a code' : 'Beat code') + '</h2><textarea id="shareCode" class="code" readonly rows="5" aria-label="Beat code"></textarea>' +
+      '<p class="tiny muted">On the other phone: Lab, Import beat, then paste this or open the file.</p>' +
+      '<div class="actions"><button data-a="copy">Copy code</button><button data-a="file">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+      '<div class="actions"><button data-a="close" class="primary">Done</button></div>';
+    $('shareCode').value = code;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      if (a.dataset.a === 'copy') copyText(code, $('shareCode'));
+      else if (a.dataset.a === 'file') saveBlob(new Blob([text + '\n'], { type: 'text/plain' }), 'pocket-decks-' + fileSlug(name) + '.txt');
+      else if (a.dataset.a === 'share') navigator.share({ title: 'Pocket Decks beat', text: text }).catch(function () { });
+      else hideSheet('shareSheet');
+    };
+  }
+  function copyText(text, ta) {
+    function fallback() { try { ta.focus(); ta.select(); document.execCommand('copy'); toast('Code copied.'); } catch (e) { toast('Select the code and copy it.'); } }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { toast('Code copied.'); }, fallback);
+    else fallback();
+  }
+  function openImport() {
+    var b = $('importSheet').firstElementChild;
+    b.innerHTML = '<h2>Import a beat</h2><textarea id="importCode" class="code" rows="4" placeholder="Paste a beat code (it starts with PD1)" aria-label="Beat code to import"></textarea>' +
+      '<p id="importMsg" class="tiny" role="status"></p>' +
+      '<div class="actions"><button data-a="file">Open a file</button><button data-a="go" class="primary">Import</button></div>' +
+      '<div class="actions"><button data-a="close" class="ghost">Cancel</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      if (a.dataset.a === 'file') { $('importFile').value = ''; $('importFile').click(); }
+      else if (a.dataset.a === 'go') runImport($('importCode').value);
+      else hideSheet('importSheet');
+    };
+    showSheet('importSheet');
+  }
+  function importFromFile() {
+    var f = $('importFile').files && $('importFile').files[0]; if (!f) return;
+    if (f.size > 200000) { $('importMsg').textContent = E.IMPORT_ERRORS['too-big']; return; }
+    var rd = new FileReader();
+    rd.onload = function () { $('importCode').value = String(rd.result || ''); runImport($('importCode').value); };
+    rd.onerror = function () { $('importMsg').textContent = 'That file could not be read.'; };
+    rd.readAsText(f);
+  }
+  function runImport(text) {
+    var r = E.importCode(text);
+    if (!r.ok) { $('importMsg').textContent = E.IMPORT_ERRORS[r.error] || E.IMPORT_ERRORS.damaged; return; }
+    if (r.kind === 'beat') {
+      var swapped = fitImported(r.pattern);
+      lab.pattern = r.pattern; if (labPlay.on && !labPlay.chain) labPlay.track = labTrack();
+      hideSheet('importSheet'); setTab('Lab'); renderLab(); saveSoon();
+      toast('Opened "' + r.pattern.name + '". Save it to a slot to keep it.' + (swapped ? ' ' + swapped + ' is in the full game, so it plays on Basement.' : ''));
+      return;
+    }
+    var n = r.slots.filter(Boolean).length, free = lab.slots.filter(function (x) { return !x; }).length, b = $('importSheet').firstElementChild;
+    b.innerHTML = '<h2>A whole Lab: ' + n + ' beat' + (n === 1 ? '' : 's') + '</h2><p class="muted">Replace your saved beats' + (r.chain.length ? ' and track' : '') + ' with these, or add them to your empty slots (' + free + ' free). The beat open in the Lab stays as it is.</p>' +
+      '<div class="actions"><button data-a="add"' + (free ? '' : ' disabled') + '>Add to empty slots</button><button data-a="replace" class="primary">Replace my slots</button></div>' +
+      '<div class="actions"><button data-a="close" class="ghost">Cancel</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a || a.disabled) return;
+      var swapped = '';
+      r.slots.forEach(function (p) { if (p) swapped = fitImported(p) || swapped; });
+      if (a.dataset.a === 'replace') {
+        lab.slots = r.slots.slice(); lab.chain = r.chain.slice(); toast('Imported ' + n + ' beat' + (n === 1 ? '' : 's') + '.' + (swapped ? ' Full-game kits play on Basement.' : ''));
+      } else if (a.dataset.a === 'add') {
+        var added = 0;
+        r.slots.forEach(function (p) { if (!p) return; var at = lab.slots.indexOf(null); if (at < 0) return; lab.slots[at] = p; added++; });
+        toast('Added ' + added + ' of ' + n + ' beats to your slots.' + (added < n ? ' The rest did not fit.' : ''));
+      } else { hideSheet('importSheet'); return; }
+      hideSheet('importSheet'); setTab('Lab'); renderLab(); saveSoon();
+    };
+  }
+
+  // ---------- your sets: recordings kept on this phone (IndexedDB), never uploaded ----------
+  var recDB = null, recDBState = 'unknown', recList = [];
+  function openRecDB(cb) {
+    if (recDB) return cb(recDB);
+    if (recDBState === 'none' || !window.indexedDB) { recDBState = 'none'; return cb(null); }
+    var rq;
+    try { rq = window.indexedDB.open('pocketdecks', 1); } catch (e) { recDBState = 'none'; return cb(null); }
+    rq.onupgradeneeded = function () { var db = rq.result; if (!db.objectStoreNames.contains('recordings')) db.createObjectStore('recordings', { keyPath: 'id' }); };
+    rq.onsuccess = function () { recDB = rq.result; recDBState = 'ok'; cb(recDB); };
+    rq.onerror = rq.onblocked = function () { recDBState = 'none'; cb(null); };
+  }
+  function recStore(mode) { return recDB.transaction('recordings', mode).objectStore('recordings'); }
+  function loadRecList(cb) {
+    openRecDB(function (db) {
+      if (!db) return cb(recList = []);
+      var out = [], rq;
+      try { rq = recStore('readonly').openCursor(); } catch (e) { return cb(recList); }
+      rq.onsuccess = function () {
+        var c = rq.result;
+        if (c) { var v = c.value; out.push({ id: v.id, name: v.name, created: v.created, secs: v.secs, type: v.type, size: v.size }); c.continue(); }
+        else cb(recList = out);
+      };
+      rq.onerror = function () { cb(recList); };
+    });
+  }
+  function recPut(item, cb) {
+    try { var tx = recDB.transaction('recordings', 'readwrite'); tx.objectStore('recordings').put(item); tx.oncomplete = function () { cb(true); }; tx.onerror = tx.onabort = function (e) { if (e && e.preventDefault) e.preventDefault(); cb(false); }; }
+    catch (e) { cb(false); }
+  }
+  function recGet(id, cb) {
+    try { var rq = recStore('readonly').get(id); rq.onsuccess = function () { cb(rq.result || null); }; rq.onerror = function () { cb(null); }; } catch (e) { cb(null); }
+  }
+  function recDelete(id, cb) {
+    try { var tx = recDB.transaction('recordings', 'readwrite'); tx.objectStore('recordings').delete(id); tx.oncomplete = function () { recList = E.recRemove(recList, id); cb(true); }; tx.onerror = function () { cb(false); }; }
+    catch (e) { cb(false); }
+  }
+  function recRenameStored(id, name, cb) {
+    recGet(id, function (v) {
+      if (!v) return cb(false);
+      v.name = E.recName(name, v.name);
+      recPut(v, function (ok) { if (ok) recList = E.recRename(recList, id, v.name); cb(ok); });
+    });
+  }
+  function fmtSecs(s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function recExt(type) { return /ogg/.test(type) ? 'ogg' : /mp4|aac/.test(type) ? 'm4a' : 'webm'; }
+  function usageLine() { var u = E.recUsage(recList); return u.count + ' of ' + E.REC_MAX_COUNT + ' sets, ' + E.fmtBytes(u.bytes) + ' of ' + E.fmtBytes(E.REC_MAX_BYTES) + ' used.'; }
+
   // ---------- recording a set ----------
   var rec = null;
   function recSupported() { return typeof window.MediaRecorder === 'function' && !!(window.AudioContext || window.webkitAudioContext); }
@@ -1829,29 +2116,109 @@ var Engine = (function () {
     try { mr = new MediaRecorder(recDest.stream); } catch (e) { toast('Recording is not available here.'); return; }
     mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
     mr.onstop = function () {
-      var type = mr.mimeType || 'audio/webm', blob = new Blob(chunks, { type: type }), secs = Math.round((Date.now() - rec.t0) / 1000);
+      var type = mr.mimeType || 'audio/webm', blob = new Blob(chunks, { type: type }), secs = Math.max(1, Math.round((Date.now() - rec.t0) / 1000)), where = rec.venue;
       rec = null; $('btnRec').classList.remove('on'); $('btnRec').textContent = 'Rec';
-      showRecording(blob, type, secs);
+      keepRecording(blob, type, secs, where);
     };
-    rec = { mr: mr, t0: Date.now() }; mr.start(1000);
+    rec = { mr: mr, t0: Date.now(), venue: gig ? E.VENUES[gig.venue].name : null }; mr.start(1000);
     $('btnRec').classList.add('on'); $('btnRec').textContent = 'Stop rec';
     toast('Recording your set. Tap again to stop.');
   }
-  function showRecording(blob, type, secs) {
-    var url = URL.createObjectURL(blob), ext = /ogg/.test(type) ? 'ogg' : /mp4|aac/.test(type) ? 'm4a' : 'webm';
-    var name = 'pocket-decks-set-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.' + ext;
-    var b = $('recSheet').firstElementChild;
-    b.innerHTML = '<h2>Your set</h2><p class="muted">' + Math.floor(secs / 60) + ':' + ('0' + secs % 60).slice(-2) + ' recorded on this phone.</p><audio controls style="width:100%"></audio>' +
-      '<div class="actions"><button data-a="save">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div><div class="actions"><button data-a="close" class="primary">Done</button></div>';
+  // every set is kept in Your sets when there is room; when there is not, the player can still save or share it
+  function keepRecording(blob, type, secs, venueName) {
+    loadRecList(function (list) {
+      var item = { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), name: E.recDefaultName(list, venueName), created: Date.now(), secs: secs, type: type, size: blob.size };
+      if (recDBState !== 'ok') return showRecording(blob, item, 'nodb');
+      var room = E.recRoom(list, blob.size);
+      if (!room.ok) return showRecording(blob, item, room.reason);
+      recPut(Object.assign({ blob: blob }, item), function (ok) {
+        if (ok) recList = list.concat([item]);
+        showRecording(blob, item, ok ? 'saved' : 'failed');
+      });
+    });
+  }
+  var REC_STATE = {
+    saved: '',
+    count: 'Your sets is full (' + E.REC_MAX_COUNT + ' sets). Delete one in Your sets to keep this one here, or save it as a file now.',
+    bytes: 'Your sets is full (' + E.fmtBytes(E.REC_MAX_BYTES) + '). Delete a set in Your sets to make room, or save this one as a file now.',
+    'too-long': 'This set is too long to keep in the app. Save it as a file or share it.',
+    nodb: 'This phone cannot keep sets inside the app. Save it as a file or share it.',
+    failed: 'Your phone ran out of room to keep this set. Save it as a file or share it.'
+  };
+  function showRecording(blob, item, state) {
+    var url = URL.createObjectURL(blob), b = $('recSheet').firstElementChild, saved = state === 'saved';
+    b.innerHTML = '<h2>Your set</h2>' +
+      (saved ? '<input id="recName" type="text" maxlength="40" aria-label="Set name"><p class="tiny muted">' + fmtSecs(item.secs) + ', kept in Your sets. ' + usageLine() + '</p>'
+        : '<p class="muted">' + fmtSecs(item.secs) + ' recorded.</p><p class="tiny warn">' + REC_STATE[state] + '</p>') +
+      '<audio controls style="width:100%"></audio>' +
+      '<div class="actions"><button data-a="save">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+      '<div class="actions"><button data-a="sets">Your sets</button><button data-a="close" class="primary">Done</button></div>';
     b.querySelector('audio').setAttribute('src', url);
+    if (saved) { $('recName').value = item.name; $('recName').onchange = function () { var v = $('recName').value; recRenameStored(item.id, v, function (ok) { if (ok) { item.name = E.recName(v, item.name); toast('Renamed.'); } }); }; }
+    function fname() { return fileSlug(saved ? E.recName($('recName').value, item.name) : item.name) + '.' + recExt(item.type); }
     b.onclick = function (e) {
       var a = e.target.closest('button'); if (!a) return;
-      if (a.dataset.a === 'save') { var link = document.createElement('a'); link.setAttribute('href', url); link.setAttribute('download', name); document.body.appendChild(link); link.click(); link.remove(); }
-      else if (a.dataset.a === 'share') {
-        try { var file = new File([blob], name, { type: type }); if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'My Pocket Decks set' }).catch(function () { }); else toast('Sharing files is not supported here. Use Save file.'); } catch (err) { toast('Sharing is not available here.'); }
-      } else { hideSheet('recSheet'); setTimeout(function () { URL.revokeObjectURL(url); }, 60000); }
+      if (a.dataset.a === 'save') saveBlob(blob, fname());
+      else if (a.dataset.a === 'share') shareFile(blob, fname(), item.type, 'My Pocket Decks set');
+      else { if (saved && $('recName').value !== item.name) $('recName').onchange(); b.querySelector('audio').pause(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); hideSheet('recSheet'); if (a.dataset.a === 'sets') openSets(); }
     };
     showSheet('recSheet');
+  }
+  var setsURL = null;
+  function closeSetsAudio() { var au = $('setsSheet').querySelector('audio'); if (au) au.pause(); if (setsURL) { URL.revokeObjectURL(setsURL); setsURL = null; } }
+  function openSets() {
+    loadRecList(function (list) {
+      closeSetsAudio();
+      var b = $('setsSheet').firstElementChild, html = '<h2>Your sets</h2>';
+      if (recDBState !== 'ok') html += '<p class="muted">This phone cannot keep sets inside the app. When you record, save or share each set as a file.</p>';
+      else if (!list.length) html += '<p class="muted">No sets yet. Tap Rec on the Decks while you play and your sets are kept here.</p>';
+      else {
+        html += '<p class="tiny muted">' + usageLine() + ' Sets stay on this phone.</p><div class="list">';
+        E.recSorted(list).forEach(function (r) {
+          html += '<button data-id="' + esc(r.id) + '"><span><b>' + esc(r.name) + '</b><br><span class="tiny muted">' + fmtSecs(r.secs || 0) + ', ' + esc(new Date(r.created || 0).toLocaleDateString()) + ', ' + E.fmtBytes(r.size || 0) + '</span></span><span>&rsaquo;</span></button>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="actions"><button data-a="close" class="primary">Done</button></div>';
+      b.innerHTML = html;
+      b.onclick = function (e) {
+        var a = e.target.closest('button'); if (!a) return;
+        if (a.dataset.id) openSet(a.dataset.id);
+        else { closeSetsAudio(); hideSheet('setsSheet'); }
+      };
+      showSheet('setsSheet');
+    });
+  }
+  function openSet(id) {
+    recGet(id, function (v) {
+      if (!v || !v.blob) { toast('That set could not be opened.'); return openSets(); }
+      closeSetsAudio();
+      var b = $('setsSheet').firstElementChild, sure = false;
+      setsURL = URL.createObjectURL(v.blob);
+      b.innerHTML = '<h2>' + esc(v.name) + '</h2><input id="setName" type="text" maxlength="40" aria-label="Set name">' +
+        '<p class="tiny muted">' + fmtSecs(v.secs || 0) + ', recorded ' + esc(new Date(v.created || 0).toLocaleString()) + ', ' + E.fmtBytes(v.size || 0) + '</p>' +
+        '<audio controls style="width:100%"></audio>' +
+        '<div class="actions"><button data-a="save">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+        '<div class="actions"><button data-a="del" class="ghost">Delete</button><button data-a="back" class="primary">Back to your sets</button></div>';
+      $('setName').value = v.name;
+      b.querySelector('audio').setAttribute('src', setsURL);
+      function rename(after) {
+        var nv = E.recName($('setName').value, v.name);
+        if (nv === v.name) return after && after();
+        recRenameStored(id, nv, function (ok) { if (ok) { v.name = nv; b.querySelector('h2').textContent = nv; toast('Renamed.'); } if (after) after(); });
+      }
+      $('setName').onchange = function () { rename(); };
+      function fname() { return fileSlug(E.recName($('setName').value, v.name)) + '.' + recExt(v.type); }
+      b.onclick = function (e) {
+        var a = e.target.closest('button'); if (!a) return;
+        if (a.dataset.a === 'save') saveBlob(v.blob, fname());
+        else if (a.dataset.a === 'share') shareFile(v.blob, fname(), v.type, 'My Pocket Decks set');
+        else if (a.dataset.a === 'del') {
+          if (!sure) { sure = true; a.textContent = 'Tap again to delete'; a.classList.add('danger'); return; }
+          recDelete(id, function (ok) { toast(ok ? 'Deleted "' + v.name + '".' : 'That set could not be deleted.'); openSets(); });
+        } else rename(openSets);
+      };
+    });
   }
 
   // ---------- sheets, toast, flash ----------
@@ -1987,6 +2354,11 @@ var Engine = (function () {
       renderFx();
     };
     $('btnRec').onclick = toggleRec;
+    $('btnSets').onclick = openSets;
+    $('btnSets2').onclick = function () { hideSheet('settings'); openSets(); };
+    $('btnShareBeat').onclick = openShare;
+    $('btnImport').onclick = openImport;
+    $('importFile').onchange = importFromFile;
     $('btnPause').onclick = function () { pauseGig(true); };
     $('btnGo').onclick = function () { hideSheet('pause'); pauseGig(false); };
     $('btnQuit').onclick = function () {
