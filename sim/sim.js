@@ -111,6 +111,8 @@ check('a good player earns most stars', () => table.good.forEach((x, i) => asser
 check('the later venues are harder: casual players do not cruise the Main Stage', () => assert.ok(table.casual[5].passRate <= 0.5, 'casual main stage pass ' + table.casual[5].passRate));
 check('doing nothing fails every venue', () => table.idle.forEach((x, i) => assert.ok(x.passRate === 0, E.VENUES[i].id + ' idle pass ' + x.passRate)));
 check('clashing beats are punished: the clasher scores well below the casual player', () => table.clasher.forEach((x, i) => assert.ok(x.rating < table.casual[i].rating - 5, E.VENUES[i].id + ' clasher ' + x.rating + ' vs casual ' + table.casual[i].rating)));
+check('a set built on clashes fails every venue, the coached first gig included', () => table.clasher.forEach((x, i) => assert.ok(x.passRate === 0, E.VENUES[i].id + ' clasher pass ' + x.passRate)));
+check('doing nothing earns no stars anywhere', () => table.idle.forEach((x, i) => assert.ok(x.stars === 0, E.VENUES[i].id + ' idle stars ' + x.stars)));
 check('skill shows in the score: good beats casual at every venue', () => table.good.forEach((x, i) => assert.ok(x.rating > table.casual[i].rating + 4, E.VENUES[i].id)));
 
 // the free/full gate and the unlock road

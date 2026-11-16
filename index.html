@@ -897,15 +897,23 @@ var Engine = (function () {
     return { have: 0, need: 1 };
   }
   function goalsMet(g) {
-    var out = [];
+    var out = [], acted = playerActed(g);
     for (var k = 0; k < 3; k++) {
+      if (!acted) { out.push(false); continue; }
       var p = goalProgress(g, k);
       // a clean set only counts once the set is over
       out.push(p.live ? (g.done && p.have >= p.need) : p.have >= p.need);
     }
     return out;
   }
-  function crowdRating(g) { return g.samples ? Math.round(g.sumEnergy / g.samples) : 0; }
+  // each clash costs the night a little, so a set built on clashes never scrapes a pass
+  var CLASH_COST = 3, CLASH_COST_CAP = 12;
+  function crowdRating(g) {
+    if (!g.samples) return 0;
+    return Math.max(0, Math.round(g.sumEnergy / g.samples) - Math.min(CLASH_COST_CAP, (g.clashes || 0) * CLASH_COST));
+  }
+  // a star means the player did something: a blend, a drop, an echo throw or time on their own beat
+  function playerActed(g) { return g.blends > 0 || g.drops > 0 || g.echoThrows > 0 || g.ownSecs > 0; }
   function gigResult(g, progress, owned) {
     var v = VENUES[g.venue], met = goalsMet(g), stars = met.filter(Boolean).length, rating = crowdRating(g);
     var pass = rating >= v.pass;
@@ -972,7 +980,7 @@ var Engine = (function () {
     nextUnlock: nextUnlock, library: library,
     createGig: createGig, tickGig: tickGig, setCrossfader: setCrossfader, setFilter: setFilter, setEcho: setEcho,
     audibleGain: audibleGain, deckLevel: deckLevel, mainDeck: mainDeck, venueTaste: venueTaste, goalProgress: goalProgress,
-    goalsMet: goalsMet, crowdRating: crowdRating, gigResult: gigResult, applyResult: applyResult, restoreGig: restoreGig, tense: tense
+    goalsMet: goalsMet, crowdRating: crowdRating, playerActed: playerActed, CLASH_COST: CLASH_COST, gigResult: gigResult, applyResult: applyResult, restoreGig: restoreGig, tense: tense
   };
 })();
 /* ENGINE:END */

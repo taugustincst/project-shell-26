@@ -249,6 +249,20 @@ test('gigResult: rating is the average crowd, pass against the venue bar, stars 
   assert.ok(r.stars >= 0 && r.stars <= 3);
 });
 
+test('each clash costs the rating, up to a cap', () => {
+  const g = gigWith(0); tick(g, 20);
+  const clean = E.crowdRating(g);
+  g.clashes = 2; assert.strictEqual(E.crowdRating(g), Math.max(0, clean - 2 * E.CLASH_COST));
+  g.clashes = 50; assert.ok(E.crowdRating(g) >= Math.max(0, clean - 12));
+});
+test('no stars for a set where the player never acted', () => {
+  const g = gigWith(2, 'neon-lights', 'night-bus'); tick(g, E.VENUES[2].secs + 1, 1 / 30);
+  assert.ok(!E.playerActed(g));
+  assert.deepStrictEqual(J(E.goalsMet(g)), [false, false, false]);
+  assert.strictEqual(E.gigResult(g, E.newProgress(), true).stars, 0);
+  g.blends = 1; assert.ok(E.goalsMet(g).some(Boolean), 'the clean set and kit time count once a blend happened');
+});
+
 // ---------- progress and the free/full road ----------
 test('only Bedroom Stream is open at the start; each clear opens the next', () => {
   const p = E.newProgress();
