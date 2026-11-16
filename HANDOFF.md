@@ -1,13 +1,12 @@
 # HANDOFF — project-shell-26
 
-## Status: SHELL — no project assigned yet
+## Status: Pocket Decks v1 built, in review (PR from `claude/pocket-decks`)
 
-This repository is a **shell for a future Claude project**, created 2026-11-10 by Folder (Muse) at Tj's direction, using the same route as the other project repos (bubblepop, ironhold).
+This repository was a shell created 2026-11-10 by Folder (Muse) at Tj's direction. On 2026-11-16 it became **Pocket Decks**, a phone DJ app where you make your own beats (see GAME-BRIEF.md and PLAY.md).
 
 ## What this shell is for
 
-- When Tj assigns a project to this repo, this file becomes the project's handoff: the living record that any Claude session (or Folder) picks up to learn where the project stands.
-- Until then, there is nothing to build. Do not invent a project for this shell.
+- This file is the project's handoff: the living record that any Claude session (or Folder) picks up to learn where the project stands.
 
 ## How work here is coordinated
 
@@ -21,3 +20,8 @@ This repository is a **shell for a future Claude project**, created 2026-11-10 b
 ## Log
 
 - **2026-11-10** — Shell created (README.md, HANDOFF.md, placeholder index.html, .github/workflows/pages.yml) by the shell-bench restock watch. Awaiting project assignment from Tj.
+- **2026-11-16** — Project assigned: Tj asked for "a music mixer phone DJ app where you can create your own beats" (Folder's write-up in the suds-handoff log) and confirmed to Claude "Yes, build it". Claude took this shell as the next free one after 25. Built Pocket Decks v1 on branch `claude/pocket-decks`: one offline `index.html` (Beat Lab, two decks, six venues, recording), GAME-BRIEF.md, PLAY.md, engine tests, static checks and a play-through sim. `npm test` passes locally (GitHub Actions minutes are used up, so no CI run and no Pages deploy until the budget resets). Free = Lab, Basement kit, Bedroom Stream and Rooftop Party; `full_unlock` opens the rest. Nothing sent to Google Play.
+  - **FOR TJ:** merge the PR (your approval is the review); set the `full_unlock` price at listing (Claude suggests $2.99, PLAY.md); decide the playtest switch with Folder.
+  - **Next:** Folder's blind score against the 8.5 bar; lift anything that scores short before it ships.
+- **2026-11-16 (later)** — Folder scored v1 **8.8** (crosses 8.5). Claude fixed two of its non-gating notes on the same PR: clashes now cost the rating, and stars need a player action. Then Tj said yes to Folder's storage brief, and both fixes landed on the same PR: **Share beat / Import beat** in the Lab (one beat or the whole Lab as a checksummed text code; copy, `.txt` file or share sheet; import by paste or file; no accounts, no network) and **Your sets** (recorded sets kept in IndexedDB on the phone, 20 sets / 50 MB caps; play, rename, delete, save file, share). `npm test`: engine 44, static 16, sim 14, all green.
+  - **Next:** Folder re-scores the delta. **FOR TJ:** merge, price and the playtest switch, as above.

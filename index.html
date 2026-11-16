@@ -1,23 +1,2434 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Project Shell 26 — in development</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pocket Decks</title>
+<meta name="theme-color" content="#12101c">
+<meta name="description" content="Make your own beats, mix them live on two decks, and play your way from a bedroom stream to the Main Stage.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2312101c'/><circle cx='22' cy='34' r='13' fill='none' stroke='%23ff5fa2' stroke-width='5'/><circle cx='22' cy='34' r='3' fill='%23ff5fa2'/><circle cx='44' cy='34' r='13' fill='none' stroke='%2346d9ff' stroke-width='5'/><circle cx='44' cy='34' r='3' fill='%2346d9ff'/><rect x='18' y='10' width='28' height='5' rx='2.5' fill='%23ffd45a'/></svg>">
 <style>
-  body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #121a24; color: #e8eef4; }
-  main { max-width: 34rem; padding: 2rem; text-align: center; }
-  h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-  p { color: #aebfd0; line-height: 1.5; }
-  a { color: #f2c14e; }
+:root {
+  --hue: 28;
+  --bg: #0d0b14; --panel: #17142294; --panel2: #1f1b2e; --line: #2e2942; --text: #f1eefb; --dim: #a9a3c2; --mute: #7d7799;
+  --acc: hsl(var(--hue, 28) 95% 60%); --acc2: hsl(calc(var(--hue, 28) + 40) 90% 66%); --good: #5be3a1; --bad: #ff6b7d; --gold: #ffd166;
+  --a: #4cc9f0; --b: #f72585; --fs: 16px; --pad: 12px; --safe-b: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: var(--fs); }
+body.big { --fs: 18px; }
+body { overscroll-behavior: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+button { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 44px; cursor: pointer; }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .45; }
+button.primary { background: var(--acc); color: #160f05; border: 0; font-weight: 700; }
+button.ghost { background: transparent; }
+button.locked { opacity: .6; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--acc2); outline-offset: 2px; }
+.lock::before { content: "\1F512"; font-size: 14px; margin-right: 4px; }
+#app { display: flex; flex-direction: column; height: 100%; max-width: 760px; margin: 0 auto; }
+/* header: the road to Headliner is always on screen */
+#top { flex: none; padding: 8px var(--pad) 6px; background: linear-gradient(180deg, #1a1530, #120f1c); border-bottom: 1px solid var(--line); }
+#ladder { display: flex; align-items: center; gap: 10px; }
+#rankBox { flex: 1; min-width: 0; }
+#rankTitle { font-weight: 800; font-size: 17px; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rankNext { color: var(--dim); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rankPips { display: flex; gap: 4px; margin-top: 3px; }
+#rankPips i { width: 14px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+#rankPips i.on { background: var(--acc); }
+#rankPips i.top { background: #3a3352; outline: 1px dashed var(--gold); }
+#btnSettings { min-width: 44px; padding: 8px; font-size: 18px; }
+#ptBadge { font-size: 14px; color: var(--gold); border: 1px solid var(--gold); border-radius: 8px; padding: 1px 6px; }
+#venueMap { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 2px; }
+#venueMap .vn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; background: none; border: 0; padding: 0; min-height: 0; }
+#venueMap .dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #231e35; border: 2px solid var(--line); }
+#venueMap .dot svg { width: 18px; height: 18px; }
+#venueMap .vn.done .dot { background: var(--acc); border-color: var(--acc); color: #160f05; }
+#venueMap .vn.next .dot { border-color: var(--acc); box-shadow: 0 0 0 3px hsl(var(--hue) 95% 60% / .25); }
+#venueMap .vn.paid .dot { border-style: dashed; }
+#venueMap .vn.top .dot { opacity: .55; border-color: var(--gold); }
+#venueMap .vn.top.done .dot { opacity: 1; background: var(--gold); }
+#venueMap .vn small { font-size: 14px; color: var(--mute); }
+#venueMap .bar { flex: .5; height: 2px; background: var(--line); }
+#venueMap .bar.on { background: var(--acc); }
+main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: var(--pad); -webkit-overflow-scrolling: touch; }
+.view[hidden] { display: none !important; }
+nav#tabs { flex: none; display: flex; border-top: 1px solid var(--line); background: #120f1c; padding-bottom: var(--safe-b); }
+nav#tabs button { flex: 1; border: 0; border-radius: 0; background: none; padding: 10px 4px 12px; color: var(--dim); font-weight: 600; }
+nav#tabs button.on { color: var(--acc); box-shadow: inset 0 3px 0 var(--acc); }
+h2 { font-size: 20px; margin: 4px 0 10px; }
+h3 { font-size: 16px; margin: 14px 0 8px; color: var(--dim); font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; }
+.card { background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.muted { color: var(--dim); }
+.tiny { font-size: 14px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border-radius: 999px; padding: 8px 14px; min-height: 40px; }
+.chip.on { background: var(--acc); color: #160f05; border-color: var(--acc); font-weight: 700; }
+/* home */
+#home { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding-top: 10px; }
+#btnStart { width: min(72vw, 280px); aspect-ratio: 1; border-radius: 32px; border: 0; font-size: 22px; font-weight: 800; color: #160f05;
+  background: radial-gradient(circle at 35% 30%, var(--acc2), var(--acc) 60%, hsl(var(--hue) 80% 40%)); box-shadow: 0 0 40px hsl(var(--hue) 95% 60% / .35); }
+#btnStart span { display: block; font-size: 16px; font-weight: 600; margin-top: 6px; opacity: .8; }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.04); } }
+#homeNext { width: 100%; text-align: left; }
+/* lab */
+.transport { display: flex; gap: 8px; align-items: center; }
+.transport .play { min-width: 64px; font-size: 20px; }
+.bpm { display: flex; align-items: center; gap: 4px; }
+.bpm button { min-width: 44px; padding: 6px; }
+.bpm output { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; }
+input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 44px; width: 100%; }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--line); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--text); margin-top: -10px; border: 3px solid var(--acc); }
+input[type=range]::-moz-range-track { height: 8px; border-radius: 4px; background: var(--line); }
+input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--text); border: 3px solid var(--acc); }
+.meter { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; position: relative; }
+.meter > i { display: block; height: 100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); width: 0; transition: width .2s; }
+#grooveTip { min-height: 1.3em; }
+#overview { display: grid; grid-template-columns: 44px repeat(16, 1fr); gap: 2px; margin-top: 10px; }
+#overview .lbl { font-size: 14px; color: var(--dim); display: flex; align-items: center; padding-left: 2px; border-radius: 6px; }
+#overview .lbl.sel { color: var(--acc); font-weight: 800; }
+#overview .c { height: 18px; border-radius: 3px; background: #251f37; }
+#overview .c.q { background: #2c2541; }
+#overview .c.on { background: var(--acc); }
+#overview .c.ph { outline: 2px solid #fff8; }
+#overview .row-lock .c { opacity: .35; }
+#pads { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.pad { aspect-ratio: 1.15; border-radius: 14px; background: #241e36; border: 1px solid var(--line); font-weight: 700; position: relative; padding: 4px; min-height: 0; }
+.pad.q { background: #2a2340; }
+.pad.on { background: var(--acc); color: #160f05; border-color: var(--acc); }
+.pad.ph { box-shadow: 0 0 0 3px #fff inset; }
+.pad small { position: absolute; left: 6px; top: 4px; font-size: 14px; opacity: .6; font-weight: 600; }
+#notePen { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 10px; }
+#notePen button { padding: 6px 0; min-height: 40px; }
+#notePen button.on { background: var(--acc2); color: #160f05; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.slot { min-height: 52px; padding: 6px; text-align: left; font-size: 14px; overflow: hidden; }
+.slot b { display: block; color: var(--acc); }
+.slot.empty { color: var(--mute); border-style: dashed; }
+.slot.inchain { box-shadow: inset 0 -3px 0 var(--acc2); }
+#chain { display: flex; gap: 6px; flex-wrap: wrap; min-height: 44px; align-items: center; }
+#chain .link { border-radius: 10px; padding: 6px 10px; min-height: 40px; background: #2a2340; }
+input[type=text] { font: inherit; color: var(--text); background: #120f1c; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 44px; width: 100%; user-select: text; -webkit-user-select: text; }
+/* decks */
+#gigHud { margin-bottom: 10px; }
+#gigHud .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+#crowd { height: 18px; border-radius: 9px; background: var(--line); position: relative; overflow: hidden; margin: 6px 0; }
+#crowd > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #6f5cff, var(--acc), var(--gold)); width: 20%; }
+#crowd > b { position: absolute; top: -2px; bottom: -2px; width: 3px; background: #fff; border-radius: 2px; }
+#goals { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+#goals li { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; color: var(--dim); }
+#goals li.met { color: var(--good); }
+#coach { color: var(--gold); min-height: 1.3em; margin-top: 6px; font-weight: 600; }
+#flash { position: fixed; left: 0; right: 0; top: 38%; text-align: center; font-size: 40px; font-weight: 900; pointer-events: none; opacity: 0; letter-spacing: 2px; text-shadow: 0 0 24px var(--acc); z-index: 40; }
+#flash.show { animation: flash 1s ease-out; }
+@keyframes flash { 0% { opacity: 0; transform: scale(.7); } 15% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0; transform: scale(1); } }
+.decks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.deck { background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.deck input[type=range] { width: 100%; }
+.deck .btns .lock { position: absolute; top: 1px; right: 3px; line-height: 1; }
+.deck .btns .lock::before { margin: 0; }
+body.live main { padding: 8px 10px; }
+body.live #coach { margin-top: 4px; }
+/* a live set fills the screen: the HUD names the gig, and the tabs wait until it ends */
+body.live #top, body.live nav#tabs { display: none; }
+body.live #goals li { font-size: 14px; }
+body.live #gigHud { padding: 10px 12px; margin-bottom: 8px; }
+.deck[data-d="0"] { border-top: 4px solid var(--a); }
+.deck[data-d="1"] { border-top: 4px solid var(--b); }
+.deck .name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck .meta { font-size: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.beats { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
+.beats i { height: 10px; border-radius: 2px; background: #2c2541; }
+.beats i.b { height: 14px; }
+.beats i.ph { background: #fff; }
+.beats i.one.ph { background: var(--gold); }
+.deck .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.deck .btns button { position: relative; padding: 6px 2px; min-height: 40px; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.deck button.on { background: var(--acc); color: #160f05; border-color: var(--acc); }
+.deck button.sync.ok { color: var(--good); border-color: var(--good); }
+.deck .flt { text-align: center; font-size: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck .flt.hot { color: var(--gold); font-weight: 800; }
+.deck .bpmrow { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 4px; }
+.deck .bpmrow button { min-height: 38px; padding: 4px; }
+.deck .bpmv { text-align: center; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xf { margin-top: 10px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-weight: 800; }
+.xf .A { color: var(--a); } .xf .B { color: var(--b); }
+.fx { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+.fx button.on { background: var(--acc2); color: #160f05; }
+#btnRec.on { background: var(--bad); color: #fff; }
+/* gigs */
+.venue { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; text-align: left; width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 16px; }
+.venue .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #2a2340; }
+.venue .ic svg { width: 24px; height: 24px; }
+.venue .t { font-weight: 800; }
+.venue .s { font-size: 14px; color: var(--dim); }
+.stars { color: var(--gold); letter-spacing: 2px; white-space: nowrap; }
+.stars .off { color: #4a4364; }
+.venue.lockd { opacity: .7; }
+.reward { display: inline-block; font-size: 14px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; margin: 4px 4px 0 0; color: var(--dim); }
+/* sheets */
+.sheet { position: fixed; inset: 0; background: #07050cd9; display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
+.sheet[hidden] { display: none; }
+.sheet .body { width: 100%; max-width: 560px; max-height: 92%; overflow-y: auto; background: #1a1628; border: 1px solid var(--line); border-radius: 22px 22px 0 0; padding: 18px 16px calc(18px + var(--safe-b)); }
+.sheet h2 { margin-top: 0; }
+.sheet .actions { display: flex; gap: 8px; margin-top: 14px; }
+.sheet .actions button { flex: 1; }
+.big-num { font-size: 40px; font-weight: 900; }
+.goal-line { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.goal-line .ok { color: var(--good); } .goal-line .no { color: var(--mute); }
+.list button { width: 100%; text-align: left; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }
+.toggle { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.toggle button { min-width: 72px; }
+.toggle button.on { background: var(--acc); color: #160f05; }
+#toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 10px); pointer-events: none; transform: translateX(-50%); background: #2a2340; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; z-index: 50; max-width: 90%; text-align: center; }
+#toast[hidden] { display: none; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 35; overflow: hidden; }
+.confetti i { position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px; animation: fall 2.2s linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+body.reduce *, body.reduce *::before { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .pulse, #flash.show, .confetti i { animation: none; } }
+@media (min-width: 560px) { #pads { gap: 10px; } .pad { aspect-ratio: 1.6; } }
+textarea.code { width: 100%; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; background: #0f0c18; color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 10px; word-break: break-all; resize: vertical; }
+.warn { color: var(--acc2); }
+button.danger { border-color: var(--bad); color: var(--bad); }
+.list button b { font-weight: 600; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Project Shell 26</h1>
-  <p>Shell held in reserve for a future Claude project.</p>
-  <p>In development by AugustInnovations LLC. The game will live at this address.</p>
-  <p>Build brief and progress: <a href="HANDOFF.md">HANDOFF.md</a></p>
-</main>
+<div id="app">
+  <header id="top">
+    <div id="ladder">
+      <div id="rankBox">
+        <div id="rankTitle">Bedroom DJ</div>
+        <div id="rankPips" aria-hidden="true"></div>
+        <div id="rankNext">Next: Bedroom Stream</div>
+      </div>
+      <span id="ptBadge" hidden>Playtest</span>
+      <button id="btnSettings" aria-label="Settings">&#9881;</button>
+    </div>
+    <div id="venueMap" aria-label="The road to Main Stage"></div>
+  </header>
+
+  <main>
+    <section id="viewHome" class="view">
+      <div id="home">
+        <button id="btnStart" class="pulse">Drop the beat<span>one tap, it plays</span></button>
+        <div class="muted">Make your own beats in the Lab. Mix them live on two decks. Play your way from a bedroom stream to the Main Stage.</div>
+        <div id="homeNext" class="card"></div>
+        <button id="btnResume" class="primary" hidden>Resume your gig</button>
+      </div>
+    </section>
+
+    <section id="viewLab" class="view" hidden>
+      <div class="transport">
+        <button id="labPlay" class="play primary" aria-label="Play">&#9654;</button>
+        <div class="bpm"><button id="labSlower" aria-label="Slower">&minus;</button><output id="labBpm">96</output><button id="labFaster" aria-label="Faster">+</button></div>
+        <div class="grow"><div class="tiny muted">Swing <span id="labSwingVal">10%</span></div><input id="labSwing" type="range" min="0" max="60" step="1" value="10" aria-label="Swing"></div>
+      </div>
+      <h3>Kit</h3>
+      <div id="kits" class="chips"></div>
+      <div class="card" style="margin-top:10px">
+        <div class="row"><b class="grow">Groove <span id="grooveVal">0%</span></b><span id="grooveReady" class="tiny"></span></div>
+        <div class="meter" style="margin:6px 0"><i id="grooveBar"></i></div>
+        <div id="grooveTip" class="tiny muted"></div>
+      </div>
+      <div id="overview" aria-label="All lanes"></div>
+      <div id="laneChips" class="chips" style="margin-top:10px"></div>
+      <div id="notePen" hidden></div>
+      <div id="pads"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="laneClear" class="ghost">Clear lane</button>
+        <button id="laneHear" class="ghost">Hear it</button>
+        <span class="grow"></span>
+        <button id="labNew" class="ghost">New beat</button>
+      </div>
+      <h3>Your beats</h3>
+      <input id="beatName" type="text" maxlength="24" aria-label="Beat name" value="Starter Groove">
+      <div id="slots" class="slots" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnShareBeat" class="ghost">Share beat</button>
+        <button id="btnImport" class="ghost">Import beat</button>
+      </div>
+      <h3>Your track</h3>
+      <div class="tiny muted">Chain beats into a full track. Tap a saved beat, then Add to track.</div>
+      <div id="chain"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="chainPlay">Play track</button>
+        <button id="toDeckA">To Deck A</button>
+        <button id="toDeckB">To Deck B</button>
+      </div>
+    </section>
+
+    <section id="viewDecks" class="view" hidden>
+      <div id="gigHud" class="card" hidden>
+        <div class="top"><b id="gigName">Bedroom Stream</b><span id="gigTime" class="muted">1:15</span><button id="btnPause" class="ghost" aria-label="Pause">&#10074;&#10074;</button></div>
+        <div id="crowd" aria-label="Crowd energy"><i></i><b></b></div>
+        <div class="row tiny muted"><span class="grow">Crowd <b id="crowdVal">20%</b></span><span id="crowdNeed"></span></div>
+        <ul id="goals"></ul>
+        <div id="coach"></div>
+      </div>
+      <div id="practice" class="card tiny muted" style="margin-bottom:10px">Practice: no crowd here. Load anything, try blends and drops, and record a set. Gigs are in the Gigs tab.</div>
+      <div class="decks">
+        <div class="deck" data-d="0"></div>
+        <div class="deck" data-d="1"></div>
+      </div>
+      <div class="xf"><span class="A">A</span><input id="xf" type="range" min="0" max="1000" value="0" aria-label="Crossfader"><span class="B">B</span></div>
+      <div class="fx">
+        <button id="fxEcho">Echo</button>
+        <button id="fxRiser">Riser</button>
+        <button id="btnRec">Rec</button>
+        <button id="btnSets" aria-label="Your sets">Sets</button>
+      </div>
+    </section>
+
+    <section id="viewGigs" class="view" hidden>
+      <h2>Gigs</h2>
+      <div id="venues"></div>
+    </section>
+  </main>
+
+  <nav id="tabs">
+    <button data-tab="Lab">Lab</button>
+    <button data-tab="Decks">Decks</button>
+    <button data-tab="Gigs">Gigs</button>
+  </nav>
+</div>
+
+<div id="flash"></div>
+<div id="toast" hidden></div>
+
+<div id="venueSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="results" class="sheet" hidden><div class="body"></div></div>
+<div id="library" class="sheet" hidden><div class="body"></div></div>
+<div id="slotSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="recSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="setsSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="shareSheet" class="sheet" hidden><div class="body"></div></div>
+<div id="importSheet" class="sheet" hidden><div class="body"></div></div>
+<input id="importFile" type="file" accept=".txt,text/plain" hidden aria-hidden="true">
+<div id="pause" class="sheet" hidden><div class="body">
+  <h2>Paused</h2>
+  <p class="muted">The crowd waits. Your set picks up right where it stopped.</p>
+  <div class="actions"><button id="btnQuit">Leave the gig</button><button id="btnGo" class="primary">Keep playing</button></div>
+</div></div>
+<div id="unlock" class="sheet" hidden><div class="body">
+  <h2>The full game</h2>
+  <p>Take the set all the way to the Main Stage.</p>
+  <ul class="muted">
+    <li>Four more venues: Warehouse, Pier Festival, Midnight Club and the Main Stage</li>
+    <li>Three more kits: Boom Bap, Neon House and Afterhours, with their groove packs</li>
+    <li>The Lead lane, Stutter and the Riser</li>
+  </ul>
+  <p class="tiny muted">One purchase, no ads, nothing to top up. Your beats and progress stay as they are.</p>
+  <p id="unlockStatus" class="tiny"></p>
+  <p id="unlockWeb" class="muted" hidden>The full game unlocks in the Google Play edition.</p>
+  <div class="actions"><button id="btnUnlockClose">Not now</button><button id="btnBuy" class="primary">Unlock</button></div>
+  <div class="actions"><button id="btnRestore" class="ghost">Restore purchase</button></div>
+</div></div>
+<div id="settings" class="sheet" hidden><div class="body">
+  <h2>Settings</h2>
+  <div class="toggle"><span>Sound</span><button id="tSound">On</button></div>
+  <div class="toggle"><span>Reduce motion</span><button id="tMotion">Off</button></div>
+  <div class="toggle"><span>Larger text</span><button id="tBig">Off</button></div>
+  <div class="actions"><button id="btnSets2">Your sets</button></div>
+  <div class="actions"><button id="btnRestore2">Restore purchase</button><button id="btnShowUnlock">Full game</button></div>
+  <div class="actions"><button id="btnReset" class="ghost">Reset progress</button></div>
+  <p class="tiny muted">Pocket Decks by AugustInnovations. Every sound is made on your phone as you play: no samples, no ads, no network. Your beats and sets stay on this device unless you share them.</p>
+  <div class="actions"><button id="btnSettingsClose" class="primary">Done</button></div>
+</div></div>
+
+<script>
+/* ENGINE:BEGIN */
+// Pocket Decks engine: pure, deterministic, no DOM and no audio. The page drives it; tests and the sim run it in Node.
+var Engine = (function () {
+  'use strict';
+  var STEPS = 16;
+  var SAVE_VERSION = 1;
+  var MAX_SLOTS = 8;
+  var MAX_CHAIN = 8;
+
+  // ---------- lanes ----------
+  // melodic lanes hold a note number (1..8, a degree of the kit's scale); drum lanes hold 1 for a hit
+  var LANES = [
+    { id: 'kick', name: 'Kick', short: 'KCK', melodic: false, free: true },
+    { id: 'snare', name: 'Snare', short: 'SNR', melodic: false, free: true },
+    { id: 'clap', name: 'Clap', short: 'CLP', melodic: false, free: true },
+    { id: 'hat', name: 'Hi-hat', short: 'HAT', melodic: false, free: true },
+    { id: 'ohat', name: 'Open hat', short: 'OHT', melodic: false, free: false, venue: 0 },
+    { id: 'perc', name: 'Perc', short: 'PRC', melodic: false, free: false, venue: 0 },
+    { id: 'bass', name: 'Bass', short: 'BAS', melodic: true, free: true },
+    { id: 'lead', name: 'Lead', short: 'LED', melodic: true, free: false, venue: 2 }
+  ];
+  var LANE_IDS = LANES.map(function (l) { return l.id; });
+  var NOTES = 8;  // scale degrees available per melodic lane
+
+  // ---------- kits ----------
+  // every sound is synthesized from these numbers in the page; there are no samples
+  var KITS = [
+    { id: 'basement', name: 'Basement', blurb: 'Warm, round, a little dusty.', bpm: 96, venue: -1, free: true,
+      scale: [0, 3, 5, 7, 10, 12, 15, 17], root: 45, hue: 28,
+      kick: { f0: 150, f1: 46, decay: 0.42, punch: 0.9 }, snare: { tone: 190, decay: 0.18, bright: 2600 },
+      clap: { bright: 1500, decay: 0.16 }, hat: { cut: 7200, decay: 0.05 }, ohat: { cut: 6800, decay: 0.32 },
+      perc: { f: 620, decay: 0.09, wave: 'triangle' }, bass: { wave: 'triangle', cut: 700, decay: 0.32, oct: 0 },
+      lead: { wave: 'square', decay: 0.22, cut: 2400, oct: 2 } },
+    { id: 'boombap', name: 'Boom Bap', blurb: 'Fat kick, cracking snare, lazy swing.', bpm: 90, venue: 1, free: false,
+      scale: [0, 2, 3, 7, 9, 12, 14, 15], root: 43, hue: 200,
+      kick: { f0: 120, f1: 42, decay: 0.55, punch: 1 }, snare: { tone: 160, decay: 0.24, bright: 2000 },
+      clap: { bright: 1200, decay: 0.2 }, hat: { cut: 6000, decay: 0.06 }, ohat: { cut: 5600, decay: 0.38 },
+      perc: { f: 420, decay: 0.12, wave: 'sine' }, bass: { wave: 'sawtooth', cut: 420, decay: 0.42, oct: 0 },
+      lead: { wave: 'triangle', decay: 0.3, cut: 1800, oct: 2 } },
+    { id: 'neon', name: 'Neon House', blurb: 'Four on the floor and bright stabs.', bpm: 124, venue: 2, free: false,
+      scale: [0, 2, 4, 7, 9, 12, 14, 16], root: 48, hue: 310,
+      kick: { f0: 170, f1: 50, decay: 0.32, punch: 0.8 }, snare: { tone: 220, decay: 0.14, bright: 3400 },
+      clap: { bright: 1800, decay: 0.18 }, hat: { cut: 8400, decay: 0.04 }, ohat: { cut: 8000, decay: 0.26 },
+      perc: { f: 880, decay: 0.07, wave: 'square' }, bass: { wave: 'square', cut: 900, decay: 0.24, oct: 0 },
+      lead: { wave: 'sawtooth', decay: 0.18, cut: 3200, oct: 2 } },
+    { id: 'afterhours', name: 'Afterhours', blurb: 'Deep, driving, dark.', bpm: 128, venue: 3, free: false,
+      scale: [0, 1, 3, 5, 7, 8, 12, 13], root: 41, hue: 160,
+      kick: { f0: 140, f1: 38, decay: 0.48, punch: 1 }, snare: { tone: 180, decay: 0.12, bright: 4200 },
+      clap: { bright: 2200, decay: 0.22 }, hat: { cut: 9000, decay: 0.035 }, ohat: { cut: 8800, decay: 0.22 },
+      perc: { f: 300, decay: 0.15, wave: 'sine' }, bass: { wave: 'sawtooth', cut: 520, decay: 0.2, oct: 0 },
+      lead: { wave: 'square', decay: 0.14, cut: 2000, oct: 2 } }
+  ];
+
+  // ---------- effects ----------
+  var EFFECTS = [
+    { id: 'filter', name: 'Filter', free: true, venue: -1, blurb: 'Twist to build tension, let go on the 1 for a drop.' },
+    { id: 'echo', name: 'Echo', free: true, venue: 0, blurb: 'Throw a word of the beat into the room.' },
+    { id: 'stutter', name: 'Stutter', free: false, venue: 1, blurb: 'Hold to repeat an eighth note; let go on the 1.' },
+    { id: 'riser', name: 'Riser', free: false, venue: 4, blurb: 'A white-noise sweep that lifts the room before a drop.' }
+  ];
+
+  // ---------- venues (gigs) ----------
+  // goals: energy (hold the crowd at >= pct for secs), blends, drops, peak, own, noclash, echo, kit
+  var VENUES = [
+    { id: 'bedroom', name: 'Bedroom Stream', icon: 'stream', secs: 75, bpm: [80, 140], pass: 35, crowd: 'Twelve viewers and a cat.',
+      goals: [{ type: 'drop', n: 1, text: 'Land a drop' }, { type: 'blend', n: 1, text: 'Blend from one deck to the other' }, { type: 'peak', n: 80, text: 'Hit 80% crowd energy' }],
+      decks: ['pack:first-light', 'pack:dust-shuffle'], coach: true },
+    { id: 'rooftop', name: 'Rooftop Party', icon: 'sun', secs: 105, bpm: [88, 112], pass: 46, crowd: 'Sunset, string lights, a hundred people.',
+      goals: [{ type: 'own', secs: 20, text: 'Play a beat you made for 20s' }, { type: 'blend', n: 2, text: '2 clean blends' }, { type: 'energy', pct: 70, secs: 30, text: 'Keep the crowd over 70% for 30s' }],
+      decks: ['pack:dust-shuffle', 'pack:golden-hour'], showcase: true },
+    { id: 'warehouse', name: 'Warehouse', icon: 'bolt', secs: 120, bpm: [118, 132], pass: 54, crowd: 'Concrete, fog, no phones.',
+      goals: [{ type: 'kit', kit: 'neon', secs: 30, text: 'Play Neon House for 30s' }, { type: 'drop', n: 2, text: '2 drops' }, { type: 'noclash', text: 'No clashing beats all set' }],
+      decks: ['pack:neon-lights', 'pack:night-bus'] },
+    { id: 'pier', name: 'Pier Festival', icon: 'wave', secs: 135, bpm: [92, 128], pass: 58, crowd: 'Ferris wheel, sea air, thousands.',
+      goals: [{ type: 'blend', n: 3, text: '3 clean blends' }, { type: 'echo', n: 3, text: '3 echo throws on the 1' }, { type: 'energy', pct: 75, secs: 45, text: 'Keep the crowd over 75% for 45s' }],
+      decks: ['pack:boardwalk', 'pack:neon-lights'] },
+    { id: 'club', name: 'Midnight Club', icon: 'moon', secs: 140, bpm: [120, 134], pass: 62, crowd: 'Low ceiling, big sound, sweat.',
+      goals: [{ type: 'kit', kit: 'afterhours', secs: 40, text: 'Play Afterhours for 40s' }, { type: 'drop', n: 3, text: '3 drops' }, { type: 'own', secs: 40, text: 'Play your own beats for 40s' }],
+      decks: ['pack:low-end', 'pack:night-bus'] },
+    { id: 'mainstage', name: 'Main Stage', icon: 'crown', secs: 165, bpm: [90, 134], pass: 66, crowd: 'The headline slot. Lasers. Everyone.',
+      goals: [{ type: 'blend', n: 4, text: '4 clean blends' }, { type: 'drop', n: 3, text: '3 drops' }, { type: 'energy', pct: 75, secs: 50, text: 'Keep the crowd over 75% for 50s' }],
+      decks: ['pack:boardwalk', 'pack:low-end'], finale: true }
+  ];
+  var FREE_VENUES = 2;   // Bedroom Stream and Rooftop Party; the gate lands right after the Rooftop
+  var RANKS = ['Bedroom DJ', 'Stream Regular', 'Rooftop Resident', 'Warehouse Name', 'Festival Act', 'Club Resident', 'Headliner'];
+  // what clearing each venue opens (shown on the venue map and on results)
+  var REWARDS = [
+    { venue: 0, items: [{ kind: 'effect', id: 'echo' }, { kind: 'lane', id: 'ohat' }, { kind: 'lane', id: 'perc' }] },
+    { venue: 1, items: [{ kind: 'kit', id: 'boombap' }, { kind: 'effect', id: 'stutter' }] },
+    { venue: 2, items: [{ kind: 'kit', id: 'neon' }, { kind: 'lane', id: 'lead' }] },
+    { venue: 3, items: [{ kind: 'kit', id: 'afterhours' }] },
+    { venue: 4, items: [{ kind: 'effect', id: 'riser' }] },
+    { venue: 5, items: [{ kind: 'title', id: 'headliner' }] }
+  ];
+
+  // ---------- small helpers ----------
+  function makeRng(seed) {
+    var a = (seed >>> 0) || 0x9e3779b9;
+    return function () {
+      a = (a + 0x6d2b79f5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function mod(a, n) { return ((a % n) + n) % n; }
+  function laneIndex(id) { return LANE_IDS.indexOf(id); }
+  function kitById(id) { for (var i = 0; i < KITS.length; i++) if (KITS[i].id === id) return KITS[i]; return null; }
+  function effectById(id) { for (var i = 0; i < EFFECTS.length; i++) if (EFFECTS[i].id === id) return EFFECTS[i]; return null; }
+  function laneById(id) { return LANES[laneIndex(id)] || null; }
+
+  // ---------- patterns ----------
+  function emptyPattern(kit, bpm) {
+    var k = kitById(kit) || KITS[0];
+    var lanes = {};
+    for (var i = 0; i < LANES.length; i++) { var a = []; for (var s = 0; s < STEPS; s++) a.push(0); lanes[LANES[i].id] = a; }
+    return { name: 'New beat', kit: k.id, bpm: bpm || k.bpm, swing: 0, lanes: lanes, own: true };
+  }
+  // build from a compact text: 'x' hit, '.' rest, digits 1-8 note numbers
+  function fromText(spec) {
+    var p = emptyPattern(spec.kit, spec.bpm);
+    p.name = spec.name; p.swing = spec.swing || 0; p.own = !!spec.own;
+    for (var id in spec.lanes) {
+      if (!Object.prototype.hasOwnProperty.call(spec.lanes, id) || laneIndex(id) < 0) continue;
+      var str = spec.lanes[id].replace(/\s+/g, '');
+      for (var s = 0; s < STEPS && s < str.length; s++) {
+        var c = str.charAt(s);
+        if (c === 'x') p.lanes[id][s] = 1;
+        else if (c >= '1' && c <= '8') p.lanes[id][s] = +c;
+      }
+    }
+    return p;
+  }
+  function normalizePattern(p) {
+    var out = emptyPattern(p && p.kit, p && p.bpm);
+    if (!p || typeof p !== 'object') return out;
+    out.name = typeof p.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 24) : 'New beat';
+    out.bpm = clamp(Math.round(+p.bpm) || out.bpm, 70, 160);
+    out.swing = clamp(+p.swing || 0, 0, 0.6);
+    out.own = p.own !== false;
+    if (p.lanes && typeof p.lanes === 'object') {
+      for (var i = 0; i < LANES.length; i++) {
+        var id = LANES[i].id, row = p.lanes[id];
+        if (!row || typeof row.length !== 'number') continue;
+        for (var s = 0; s < STEPS; s++) {
+          var v = Math.round(+row[s]) || 0;
+          out.lanes[id][s] = LANES[i].melodic ? clamp(v, 0, NOTES) : (v ? 1 : 0);
+        }
+      }
+    }
+    return out;
+  }
+  function clonePattern(p) { return normalizePattern(JSON.parse(JSON.stringify(p))); }
+  // tap a step: drums toggle; melodic lanes set the pen note, or clear it when the same note is there
+  function toggleStep(p, lane, step, note) {
+    var L = laneById(lane);
+    if (!L || step < 0 || step >= STEPS) return 0;
+    var cur = p.lanes[lane][step];
+    if (L.melodic) {
+      var n = clamp(Math.round(note) || 1, 1, NOTES);
+      p.lanes[lane][step] = cur === n ? 0 : n;
+    } else p.lanes[lane][step] = cur ? 0 : 1;
+    return p.lanes[lane][step];
+  }
+  function clearLane(p, lane) { if (p.lanes[lane]) for (var s = 0; s < STEPS; s++) p.lanes[lane][s] = 0; }
+  function hitCount(p) {
+    var n = 0;
+    for (var i = 0; i < LANES.length; i++) for (var s = 0; s < STEPS; s++) if (p.lanes[LANES[i].id][s]) n++;
+    return n;
+  }
+  // how crowd-ready a beat is, 0..1, with the one most useful tip; the same number drives the crowd in gigs
+  function rateGroove(p) {
+    var L = p.lanes, s, kb = 0, k = 0, back = 0, sn = 0, hats = 0, bass = 0, lead = 0, perc = 0;
+    var notes = {};
+    for (s = 0; s < STEPS; s++) {
+      if (L.kick[s]) { k++; if (s % 4 === 0) kb++; }
+      if (L.snare[s] || L.clap[s]) { sn++; if (s === 4 || s === 12) back++; }
+      if (L.hat[s] || L.ohat[s]) hats++;
+      if (L.bass[s]) { bass++; notes['b' + L.bass[s]] = 1; }
+      if (L.lead[s]) { lead++; notes['l' + L.lead[s]] = 1; }
+      if (L.perc[s]) perc++;
+    }
+    var kick = kb >= 2 ? 1 : kb === 1 ? 0.6 : k ? 0.4 : 0;
+    var bb = back >= 2 ? 1 : back === 1 ? 0.75 : sn ? 0.45 : 0;
+    var hh = hats >= 4 && hats <= 12 ? 1 : hats > 12 ? 0.8 : hats ? 0.6 : 0.15;
+    var bs = bass >= 3 ? 1 : bass ? 0.6 : 0.25;
+    var variety = Object.keys(notes).length >= 3 ? 1 : Object.keys(notes).length ? 0.6 : 0.3;
+    var total = k + sn + hats + bass + lead + perc;
+    var score = 0.3 * kick + 0.25 * bb + 0.15 * hh + 0.2 * bs + 0.1 * variety;
+    if (perc) score += 0.03;
+    if (lead) score += 0.04;
+    if (total > 44) score -= 0.15;
+    if (total < 4) score *= 0.5;
+    score = clamp(score, 0, 1);
+    var tip = null;
+    if (kb < 2) tip = 'Put kicks on the beat: steps 1, 5, 9 and 13.';
+    else if (back < 2) tip = 'Add a snare or clap on 5 and 13 for the backbeat.';
+    else if (hats < 4) tip = 'Hi-hats keep it moving: try every other step.';
+    else if (bass < 3) tip = 'Give it a bassline: pick a note and tap a few steps.';
+    else if (Object.keys(notes).length < 3) tip = 'Vary the bass: use two or three different notes.';
+    else if (total > 44) tip = 'It is crowded. Take a few hits out to let it breathe.';
+    return { score: Math.round(score * 1000) / 1000, tip: tip, ready: score >= 0.7 };
+  }
+
+  // ---------- built-in groove packs (synthesized, written here) ----------
+  var PACK_SPECS = [
+    { id: 'starter', name: 'Starter Groove', kit: 'basement', bpm: 96, swing: 0.1,
+      lanes: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bass: '1.....1...3.....' } },
+    { id: 'first-light', name: 'First Light', kit: 'basement', bpm: 96, swing: 0.12,
+      lanes: { kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.xx', bass: '1..1..5...4.3...', clap: '............x...' } },
+    { id: 'dust-shuffle', name: 'Dust Shuffle', kit: 'basement', bpm: 100, swing: 0.22,
+      lanes: { kick: 'x...x..xx...x...', snare: '....x.......x..x', hat: 'xxx.xxx.xxx.xxx.', bass: '1...1..34...1...', clap: '....x.......x...' } },
+    { id: 'golden-hour', name: 'Golden Hour', kit: 'basement', bpm: 104, swing: 0.15,
+      lanes: { kick: 'x...x...x...x...', clap: '....x.......x...', hat: '..x...x...x...x.', bass: '1.1...4.5.5...3.', snare: '...............x' } },
+    { id: 'cypher', name: 'Cypher', kit: 'boombap', bpm: 90, swing: 0.3,
+      lanes: { kick: 'x......xx.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', ohat: '..............x.', bass: '1......13.1.....', perc: '.x.......x......' } },
+    { id: 'crate-dig', name: 'Crate Dig', kit: 'boombap', bpm: 94, swing: 0.26,
+      lanes: { kick: 'x.x.....x.x..x..', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx', bass: '1.1.....4.4..3..', lead: '5.......6...5...' } },
+    { id: 'neon-lights', name: 'Neon Lights', kit: 'neon', bpm: 124, swing: 0,
+      lanes: { kick: 'x...x...x...x...', clap: '....x.......x...', hat: '..x...x...x...x.', ohat: '..x...x...x...x.', bass: '.1.1.1.4.4.4.3.3', lead: '5..5..6...5..3..' } },
+    { id: 'night-bus', name: 'Night Bus', kit: 'neon', bpm: 122, swing: 0.08,
+      lanes: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'x.xxx.xxx.xxx.xx', bass: '1..1..1.4..4..5.', perc: '...x.....x.....x' } },
+    { id: 'boardwalk', name: 'Boardwalk', kit: 'neon', bpm: 118, swing: 0.1,
+      lanes: { kick: 'x...x...x...x...', clap: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', ohat: '......x.......x.', bass: '1.1.3.3.4.4.3.3.', lead: '..5...6...8...6.' } },
+    { id: 'low-end', name: 'Low End Theory', kit: 'afterhours', bpm: 128, swing: 0,
+      lanes: { kick: 'x...x...x...x...', clap: '....x.......x...', hat: '..x...x...x...x.', ohat: '..............x.', bass: '.11..11..11..43.', perc: 'x......x......x.' } },
+    { id: 'tunnel', name: 'Tunnel Vision', kit: 'afterhours', bpm: 130, swing: 0.04,
+      lanes: { kick: 'x...x...x...x..x', snare: '........x.......', hat: 'xxxxxxxxxxxxxxxx', bass: '1.1.1.1.2.2.1.1.', lead: '5...........4...' } }
+  ];
+  var PACKS = PACK_SPECS.map(function (s) { var p = fromText(s); p.own = false; p.id = s.id; return p; });
+  function packById(id) { for (var i = 0; i < PACKS.length; i++) if (PACKS[i].id === id) return PACKS[i]; return null; }
+
+  // ---------- tracks: one or more patterns chained, played by a deck ----------
+  function makeTrack(patterns, name, ref) {
+    var list = patterns.filter(Boolean).map(clonePattern);
+    if (!list.length) list = [clonePattern(PACKS[0])];
+    var first = list[0];
+    var groove = 0, own = false;
+    for (var i = 0; i < list.length; i++) { groove += rateGroove(list[i]).score; if (list[i].own) own = true; }
+    return { name: name || first.name, ref: ref || null, kit: first.kit, bpm: first.bpm, swing: first.swing, own: own,
+      bars: list.length, patterns: list, groove: Math.round(groove / list.length * 1000) / 1000 };
+  }
+  function packTrack(id) { var p = packById(id); return p ? makeTrack([p], p.name, 'pack:' + id) : null; }
+  function trackLength(t) { return t.bars * STEPS; }
+  // the hits on one step of a track: [{lane, note}]
+  function trackHits(t, step) {
+    var bar = Math.floor(mod(step, trackLength(t)) / STEPS), s = mod(step, STEPS), p = t.patterns[bar], out = [];
+    for (var i = 0; i < LANES.length; i++) { var v = p.lanes[LANES[i].id][s]; if (v) out.push({ lane: LANES[i].id, note: v }); }
+    return out;
+  }
+  function trackHasKick(t, step) {
+    var bar = Math.floor(mod(step, trackLength(t)) / STEPS);
+    return !!t.patterns[bar].lanes.kick[mod(step, STEPS)];
+  }
+
+  // ---------- timing ----------
+  function stepsPerSecond(bpm) { return bpm / 60 * 4; }
+  // swing pushes every off (odd) sixteenth late by a share of a step
+  function swingDelay(step, bpm, swing) { return (step % 2 === 1) ? swing * 0.5 / stepsPerSecond(bpm) : 0; }
+
+  // ---------- decks ----------
+  // clock = sixteenth steps since the deck started (float, only goes forward); the deck maps clock steps to track steps
+  function createDeck() {
+    return { track: null, playing: false, bpm: 96, clock: 0, base: 0, filter: 0, loop: null, stutter: null, cue: 0,
+      heard: 0, ownHeard: 0, lastLoad: 0, gain: 0 };
+  }
+  function loadDeck(d, track) {
+    d.track = track; d.bpm = track.bpm; d.base = -Math.floor(d.clock); d.loop = null; d.stutter = null; d.cue = 0; d.heard = 0;
+  }
+  // which track step a whole clock step plays
+  function deckStepAt(d, clockStep) {
+    if (!d.track) return 0;
+    var len = trackLength(d.track);
+    if (d.stutter) return mod(d.stutter.start + mod(clockStep - d.stutter.c0, d.stutter.len), len);
+    if (d.loop) return mod(d.loop.start + mod(clockStep - d.loop.c0, d.loop.len), len);
+    return mod(clockStep + d.base, len);
+  }
+  function deckPos(d) { return deckStepAt(d, Math.floor(d.clock)); }
+  function frac(x) { return x - Math.floor(x); }
+  // where the deck is inside the bar, as a float 0..16 (track steps, so loops and cue jumps count)
+  function deckBarPos(d) { return d.track ? mod(deckPos(d) + frac(d.clock), 16) : 0; }
+  function setPlaying(d, on, other) {
+    if (!d.track) return;
+    if (on && !d.playing) {
+      // start in phase with the other deck when it is playing (quantized start), otherwise from the cue
+      var c = Math.floor(d.clock), start = d.cue;
+      if (other && other.playing && other.track) {
+        d.clock = c + frac(other.clock);
+        start = d.cue - mod(d.cue, 16) + Math.floor(deckBarPos(other));
+      }
+      d.base = mod(start - c, trackLength(d.track));
+    }
+    d.playing = !!on;
+    if (!on) { d.loop = null; d.stutter = null; }
+  }
+  // loop the current beat (4 steps) or two beats; len 0 ends the loop and carries on in time
+  function setLoop(d, len) {
+    if (!d.track) return;
+    var c = Math.floor(d.clock);
+    if (!len) {
+      if (d.loop) d.base = mod(deckStepAt(d, c) - c, trackLength(d.track));
+      d.loop = null; return;
+    }
+    var pos = deckStepAt(d, c);
+    var start = pos - mod(pos, 4);
+    var len2 = Math.min(len, trackLength(d.track));
+    d.loop = { start: start, len: len2, c0: c - mod(pos, 4) };
+  }
+  function setStutter(d, on) {
+    if (!d.track) return;
+    var c = Math.floor(d.clock);
+    if (on) {
+      if (d.stutter) return;
+      var pos = deckStepAt(d, c);
+      d.stutter = { start: pos - mod(pos, 2), len: 2, c0: c - mod(pos, 2), since: d.clock };
+    } else d.stutter = null;   // let go: the beat carries on in its place, as if it never stopped
+  }
+  // jump back to the cue point on the next beat, keeping the beat grid
+  function cueJump(d) {
+    if (!d.track) return;
+    var c = Math.floor(d.clock), next = c + mod(4 - mod(c, 4), 4);
+    d.loop = null; d.stutter = null;
+    d.base = mod(d.cue - next, trackLength(d.track));
+  }
+  function setCue(d) {
+    if (!d.track) return;
+    var pos = deckPos(d);
+    d.cue = pos - mod(pos, 4);
+  }
+  // match tempo and line the beats up with the other deck
+  function syncDeck(d, other) {
+    if (!d.track || !other || !other.track) return false;
+    d.bpm = other.bpm;
+    var diff = frac(other.clock) - frac(d.clock);
+    if (diff > 0.5) diff -= 1; if (diff < -0.5) diff += 1;
+    d.clock += diff;
+    // then line the bar up with the other deck (same step of the bar)
+    var want = Math.floor(deckBarPos(other)), have = mod(deckPos(d), 16);
+    var delta = mod(want - have + 8, 16) - 8;
+    if (d.stutter) return true;
+    if (d.loop) d.loop.c0 -= delta;
+    else d.base = mod(d.base + delta, trackLength(d.track));
+    return true;
+  }
+  function nudgeBpm(d, delta) { d.bpm = clamp(Math.round((d.bpm + delta) * 2) / 2, 70, 160); }
+  function advanceDeck(d, dt) { if (d.playing && d.track) d.clock += dt * stepsPerSecond(d.bpm); }
+  // beat phase difference between two playing decks, in beats (0..0.5)
+  function phaseGap(a, b) {
+    var x = mod(deckBarPos(a), 4) / 4, y = mod(deckBarPos(b), 4) / 4;
+    var g = Math.abs(x - y); return g > 0.5 ? 1 - g : g;
+  }
+  function inSync(a, b) { return Math.abs(a.bpm - b.bpm) < 0.75 && phaseGap(a, b) < 0.07; }
+
+  // ---------- progress ----------
+  function newProgress() {
+    return { cleared: [], stars: [0, 0, 0, 0, 0, 0], bestEnergy: [0, 0, 0, 0, 0, 0], goalsMet: [[], [], [], [], [], []],
+      gigs: 0, drops: 0, blends: 0, coachDone: false };
+  }
+  function normalizeProgress(p) {
+    var o = newProgress();
+    if (!p || typeof p !== 'object') return o;
+    if (Array.isArray(p.cleared)) o.cleared = p.cleared.filter(function (i) { return i >= 0 && i < VENUES.length && (i | 0) === i; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    for (var i = 0; i < VENUES.length; i++) {
+      if (p.stars) o.stars[i] = clamp(p.stars[i] | 0, 0, 3);
+      if (p.bestEnergy) o.bestEnergy[i] = clamp(+p.bestEnergy[i] || 0, 0, 100);
+      if (p.goalsMet && Array.isArray(p.goalsMet[i])) o.goalsMet[i] = p.goalsMet[i].filter(function (g) { return g >= 0 && g < 3; });
+    }
+    o.gigs = Math.max(0, p.gigs | 0); o.drops = Math.max(0, p.drops | 0); o.blends = Math.max(0, p.blends | 0);
+    o.coachDone = !!p.coachDone;
+    return o;
+  }
+  function venueCleared(progress, i) { return progress.cleared.indexOf(i) >= 0; }
+  function rankIndex(progress) { return progress.cleared.length; }
+  function totalStars(progress) { var n = 0; for (var i = 0; i < progress.stars.length; i++) n += progress.stars[i]; return n; }
+  // a venue is open when the one before it is cleared; past the free venues it needs the full unlock
+  function venueOpen(progress, owned, i) {
+    if (i < 0 || i >= VENUES.length) return false;
+    if (i >= FREE_VENUES && !owned) return false;
+    return i === 0 || venueCleared(progress, i - 1);
+  }
+  function venueLockReason(progress, owned, i) {
+    if (i > 0 && !venueCleared(progress, i - 1)) return 'clear';
+    if (i >= FREE_VENUES && !owned) return 'unlock';
+    return null;
+  }
+  // is a lane / kit / effect playable now? earned by a venue clear, and past the free set it needs the unlock
+  function itemState(progress, owned, kind, id) {
+    var it = kind === 'kit' ? kitById(id) : kind === 'lane' ? laneById(id) : kind === 'effect' ? effectById(id) : null;
+    if (!it) return 'none';
+    var v = it.venue;
+    var earned = it.free && (v === undefined || v < 0) ? true : venueCleared(progress, v);
+    if (!earned) return 'earn';
+    if (!it.free && !owned) return 'unlock';
+    return 'open';
+  }
+  function canUse(progress, owned, kind, id) { return itemState(progress, owned, kind, id) === 'open'; }
+  // the next thing on the road: what it is and what opens it
+  function nextUnlock(progress, owned) {
+    for (var i = 0; i < REWARDS.length; i++) {
+      if (!venueCleared(progress, REWARDS[i].venue)) return { venue: REWARDS[i].venue, items: REWARDS[i].items, needsUnlock: REWARDS[i].venue >= FREE_VENUES && !owned };
+    }
+    return null;
+  }
+  // tracks a deck can load: the player's beats (always) plus packs from kits they can use
+  function library(progress, owned, own) {
+    var out = [];
+    (own || []).forEach(function (t) { if (t) out.push(t); });
+    for (var i = 0; i < PACKS.length; i++) {
+      if (PACKS[i].id === 'starter') continue;
+      var st = itemState(progress, owned, 'kit', PACKS[i].kit);
+      out.push({ ref: 'pack:' + PACKS[i].id, name: PACKS[i].name, kit: PACKS[i].kit, bpm: PACKS[i].bpm, state: st });
+    }
+    return out;
+  }
+
+  // ---------- gigs ----------
+  var BUILD_BEATS = 2;      // the filter (or stutter, or riser) must hold the tension this many beats to set up a drop
+  var DROP_WINDOW = 2.2, DROP_EARLY = 1;   // let go up to half a beat after the bar's 1 (or a step before it)
+  function venueTaste(v, bpm) {
+    if (bpm >= v.bpm[0] && bpm <= v.bpm[1]) return 1;
+    var off = bpm < v.bpm[0] ? v.bpm[0] - bpm : bpm - v.bpm[1];
+    return clamp(1 - off / 25, 0.45, 1);
+  }
+  function createGig(index, seed) {
+    var v = VENUES[index];
+    var g = { venue: index, t: 0, secs: v.secs, energy: 20, hype: 0, sumEnergy: 0, samples: 0, peak: 20, xf: 0, echo: false, echoT: 0,
+      riser: false, riserT: 0, decks: [createDeck(), createDeck()], done: false, seed: seed >>> 0,
+      blends: 0, drops: 0, clashes: 0, echoThrows: 0, overSecs: [0, 0, 0], ownSecs: 0, kitSecs: {},
+      blend: null, side: 0, build: [0, 0], lastBar: [-1, -1], clashOn: false, silence: 0, coach: v.coach ? 0 : -1, events: [], combo: 0 };
+    return g;
+  }
+  function audibleGain(g, i) {
+    // equal-power crossfader: 0 = all A, 1 = all B
+    var x = clamp(g.xf, 0, 1);
+    return i === 0 ? Math.cos(x * Math.PI / 2) : Math.sin(x * Math.PI / 2);
+  }
+  function openness(d) { return 1 - Math.min(1, Math.abs(d.filter)); }
+  // what the crowd hears from each deck, 0..1
+  function deckLevel(g, i) {
+    var d = g.decks[i];
+    if (!d.playing || !d.track) return 0;
+    return audibleGain(g, i) * openness(d);
+  }
+  function setCrossfader(g, x) { g.xf = clamp(x, 0, 1); }
+  function setRiser(g, on) { g.riser = !!on; g.riserT = 0; }
+  function setFilter(g, i, v) { g.decks[i].filter = clamp(v, -1, 1); }
+  function setEcho(g, on) {
+    var ev = [];
+    if (on && !g.echo) {
+      g.echoT = 0;
+      // an echo throw lands when it starts within a step of the bar's 1 on the main deck
+      var main = mainDeck(g), d = g.decks[main];
+      if (d.playing && d.track) {
+        var pos = deckBarPos(d);
+        if (pos < 1.2 || pos > 15.6) { g.echoThrows++; ev.push({ type: 'echo' }); bump(g, 8); }
+      }
+    }
+    g.echo = !!on;
+    return ev;
+  }
+  function mainDeck(g) { return deckLevel(g, 1) > deckLevel(g, 0) ? 1 : (deckLevel(g, 0) > 0 ? 0 : (g.xf > 0.5 ? 1 : 0)); }
+  // moments (drops, blends, echo throws) lift the crowd above what the beat alone earns; the lift fades
+  var HYPE_MAX = 48, HYPE_FADE = 1.5;
+  // what a beat alone earns: a single fresh, well-made track holds the crowd around a third of the way up
+  var BASE_LIFT = 0.12, GROOVE_LIFT = 0.26, BASE_CAP = 0.42, FRESH_SECS = 25, FRESH_FLOOR = 0.45;
+  function bump(g, n) { g.hype = clamp(g.hype + n, 0, HYPE_MAX); g.energy = clamp(g.energy + n * 0.35, 0, 100); if (g.energy > g.peak) g.peak = g.energy; }
+  // the same track for too long gets old
+  function freshness(d) { return d.heard < FRESH_SECS ? 1 : clamp(1 - (d.heard - FRESH_SECS) / 70, FRESH_FLOOR, 1); }
+  // tension on a deck: the filter twisted hard, the stutter held, or the riser running
+  function tense(g, i) { var d = g.decks[i]; return Math.abs(d.filter) >= 0.6 || !!d.stutter || (g.riser && i === mainDeck(g)); }
+
+  function tickGig(g, dt) {
+    var ev = [];
+    if (g.done) return ev;
+    var v = VENUES[g.venue];
+    g.t += dt;
+    var lv = [deckLevel(g, 0), deckLevel(g, 1)];
+    for (var i = 0; i < 2; i++) {
+      var d = g.decks[i];
+      advanceDeck(d, dt);
+      if (d.playing && audibleGain(g, i) > 0.5) {
+        d.heard += dt;
+        if (d.track.own) g.ownSecs += dt;
+        g.kitSecs[d.track.kit] = (g.kitSecs[d.track.kit] || 0) + dt;
+      }
+      // drops: tension held for a while, then released right on the bar's 1
+      if (d.playing && d.track) {
+        if (tense(g, i)) g.build[i] += dt * d.bpm / 60;
+        else {
+          if (g.build[i] >= BUILD_BEATS && audibleGain(g, i) > 0.5) {
+            var pos = deckBarPos(d);
+            if ((pos < DROP_WINDOW || pos > 16 - DROP_EARLY) && d.track.groove > 0.3) {
+              g.drops++; ev.push({ type: 'drop', deck: i }); bump(g, 26); g.combo++;
+            } else ev.push({ type: 'miss-drop', deck: i });
+          }
+          g.build[i] = 0;
+        }
+      }
+    }
+    if (g.riser) { g.riserT += dt; if (g.riserT > 8) g.riser = false; }
+    // clashes: two beats out of time both audible
+    var both = lv[0] > 0.2 && lv[1] > 0.2;
+    var clash = both && !inSync(g.decks[0], g.decks[1]);
+    if (clash && !g.clashOn) { g.clashes++; ev.push({ type: 'clash' }); g.combo = 0; g.hype = Math.max(0, g.hype - 18); }
+    g.clashOn = clash;
+    // blends: from one side to the other, both playing, never clashing on the way
+    var side = g.xf <= 0.12 ? 0 : g.xf >= 0.88 ? 1 : -1;
+    var bothPlaying = g.decks[0].playing && g.decks[1].playing;
+    if (side >= 0 && !g.blend) g.side = side;
+    if (side < 0 && bothPlaying && !g.blend) g.blend = { from: g.side === 1 ? 1 : 0, bad: 0, t: 0 };
+    if (g.blend) {
+      g.blend.t += dt;
+      if (clash) g.blend.bad += dt;
+      if (side === g.blend.from || !bothPlaying) { g.blend = null; if (side >= 0) g.side = side; }
+      else if (side === 1 - g.blend.from) {
+        if (g.blend.bad < 0.5 && g.blend.t >= 1.5) {
+          g.blends++; ev.push({ type: 'blend' }); bump(g, 22); g.combo++;
+          // the deck coming in is fresh
+          g.decks[side].heard = Math.min(g.decks[side].heard, 20);
+        } else ev.push({ type: 'rough-blend' });
+        g.blend = null; g.side = side;
+      }
+    }
+    // the crowd's mood follows what it hears
+    var target = 0;
+    for (i = 0; i < 2; i++) {
+      d = g.decks[i];
+      if (!lv[i]) continue;
+      target += lv[i] * (BASE_LIFT + GROOVE_LIFT * d.track.groove) * venueTaste(v, d.bpm) * freshness(d);
+    }
+    target = Math.min(target, BASE_CAP);
+    if (both && !clash) target += 0.06;
+    if (clash) target *= 0.35;
+    if (g.echo) g.echoT += dt;
+    g.hype = Math.max(0, g.hype - HYPE_FADE * dt);
+    target = clamp(target * 100 + (lv[0] || lv[1] ? g.hype : 0), 0, 100);
+    if (!lv[0] && !lv[1]) { g.silence += dt; } else g.silence = 0;
+    var rate = target > g.energy ? 7 : (clash ? 16 : g.silence > 0 ? 14 : 5);
+    var stepE = rate * dt;
+    if (Math.abs(target - g.energy) <= stepE) g.energy = target; else g.energy += target > g.energy ? stepE : -stepE;
+    if (g.energy > g.peak) g.peak = g.energy;
+    g.sumEnergy += g.energy * dt; g.samples += dt;
+    for (var k = 0; k < 3; k++) { var gl = v.goals[k]; if (gl.type === 'energy' && g.energy >= gl.pct) g.overSecs[k] += dt; }
+    // goals as they land
+    var met = goalsMet(g);
+    for (k = 0; k < 3; k++) if (met[k] && !(g.metFlags && g.metFlags[k])) { (g.metFlags = g.metFlags || [false, false, false])[k] = true; ev.push({ type: 'goal', goal: k }); }
+    if (g.t >= g.secs) { g.done = true; ev.push({ type: 'end' }); }
+    for (k = 0; k < ev.length; k++) g.events.push(ev[k].type);
+    if (g.events.length > 200) g.events.splice(0, g.events.length - 200);
+    return ev;
+  }
+  function goalProgress(g, k) {
+    var gl = VENUES[g.venue].goals[k];
+    switch (gl.type) {
+      case 'drop': return { have: g.drops, need: gl.n };
+      case 'blend': return { have: g.blends, need: gl.n };
+      case 'echo': return { have: g.echoThrows, need: gl.n };
+      case 'peak': return { have: Math.round(g.peak), need: gl.n };
+      case 'energy': return { have: Math.floor(g.overSecs[k]), need: gl.secs };
+      case 'own': return { have: Math.floor(g.ownSecs), need: gl.secs };
+      case 'kit': return { have: Math.floor(g.kitSecs[gl.kit] || 0), need: gl.secs };
+      case 'noclash': return { have: g.clashes ? 0 : 1, need: 1, live: true };
+    }
+    return { have: 0, need: 1 };
+  }
+  function goalsMet(g) {
+    var out = [], acted = playerActed(g);
+    for (var k = 0; k < 3; k++) {
+      if (!acted) { out.push(false); continue; }
+      var p = goalProgress(g, k);
+      // a clean set only counts once the set is over
+      out.push(p.live ? (g.done && p.have >= p.need) : p.have >= p.need);
+    }
+    return out;
+  }
+  // each clash costs the night a little, so a set built on clashes never scrapes a pass
+  var CLASH_COST = 3, CLASH_COST_CAP = 12;
+  function crowdRating(g) {
+    if (!g.samples) return 0;
+    return Math.max(0, Math.round(g.sumEnergy / g.samples) - Math.min(CLASH_COST_CAP, (g.clashes || 0) * CLASH_COST));
+  }
+  // a star means the player did something: a blend, a drop, an echo throw or time on their own beat
+  function playerActed(g) { return g.blends > 0 || g.drops > 0 || g.echoThrows > 0 || g.ownSecs > 0; }
+  function gigResult(g, progress, owned) {
+    var v = VENUES[g.venue], met = goalsMet(g), stars = met.filter(Boolean).length, rating = crowdRating(g);
+    var pass = rating >= v.pass;
+    var firstClear = pass && !venueCleared(progress, g.venue);
+    var rewards = firstClear ? (REWARDS[g.venue] ? REWARDS[g.venue].items : []) : [];
+    // how close the best run came to the next star, so the results can say "one more blend"
+    var closest = null;
+    for (var k = 0; k < 3; k++) {
+      if (met[k]) continue;
+      var p = goalProgress(g, k), short = Math.max(0, p.need - p.have);
+      if (!closest || short / p.need < closest.ratio) closest = { goal: k, short: short, ratio: short / p.need, text: v.goals[k].text };
+    }
+    return { venue: g.venue, rating: rating, pass: pass, need: v.pass, stars: stars, met: met, peak: Math.round(g.peak),
+      blends: g.blends, drops: g.drops, clashes: g.clashes, firstClear: firstClear, rewards: rewards,
+      rewardsLocked: firstClear && g.venue >= FREE_VENUES - 1 && !owned && rewards.some(function (r) { return r.kind !== 'title' && !isFreeItem(r); }),
+      closest: closest };
+  }
+  function isFreeItem(r) {
+    var it = r.kind === 'kit' ? kitById(r.id) : r.kind === 'lane' ? laneById(r.id) : r.kind === 'effect' ? effectById(r.id) : null;
+    return it ? !!it.free : true;
+  }
+  function applyResult(progress, res) {
+    progress.gigs++;
+    progress.drops += res.drops; progress.blends += res.blends;
+    if (res.pass && progress.cleared.indexOf(res.venue) < 0) { progress.cleared.push(res.venue); progress.cleared.sort(function (a, b) { return a - b; }); }
+    // stars and best rating only count on a passed gig
+    if (res.pass) {
+      var gm = progress.goalsMet[res.venue];
+      for (var k = 0; k < 3; k++) if (res.met[k] && gm.indexOf(k) < 0) gm.push(k);
+      progress.stars[res.venue] = Math.max(progress.stars[res.venue], gm.length);
+    }
+    progress.bestEnergy[res.venue] = Math.max(progress.bestEnergy[res.venue], res.rating);
+    return progress;
+  }
+  // plain JSON save of a gig in progress; tracks are kept whole so a reload resumes exactly
+  function restoreGig(o) {
+    if (!o || typeof o !== 'object' || !(o.venue >= 0 && o.venue < VENUES.length) || !Array.isArray(o.decks) || o.decks.length !== 2) return null;
+    var g = createGig(o.venue, o.seed | 0);
+    for (var key in g) if (Object.prototype.hasOwnProperty.call(o, key) && key !== 'decks') g[key] = o[key];
+    for (var i = 0; i < 2; i++) {
+      var from = o.decks[i] || {}, d = g.decks[i];
+      for (var dk in d) if (Object.prototype.hasOwnProperty.call(from, dk)) d[dk] = from[dk];
+      if (d.track && (!Array.isArray(d.track.patterns) || !d.track.patterns.length)) d.track = null;
+      if (d.track) { d.track.patterns = d.track.patterns.map(normalizePattern); d.track.bars = d.track.patterns.length; }
+    }
+    if (g.done || !(g.t >= 0 && g.t < g.secs)) return null;
+    return g;
+  }
+
+  // ---------- sharing beats: a plain-text code the player copies, saves as a file or shares ----------
+  // Nothing leaves the phone unless the player exports it. The code is versioned and checksummed so a
+  // mangled paste is caught instead of half-imported.
+  var SHARE_PREFIX = 'PD1', SHARE_MAX = 24000;
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function utf8Bytes(str) {
+    var out = [];
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) { var d = str.charCodeAt(i + 1); if (d >= 0xdc00 && d < 0xe000) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; } }
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | c >> 6, 0x80 | c & 63);
+      else if (c < 0x10000) out.push(0xe0 | c >> 12, 0x80 | c >> 6 & 63, 0x80 | c & 63);
+      else out.push(0xf0 | c >> 18, 0x80 | c >> 12 & 63, 0x80 | c >> 6 & 63, 0x80 | c & 63);
+    }
+    return out;
+  }
+  function utf8String(b) {
+    var s = '', i = 0;
+    while (i < b.length) {
+      var c = b[i++];
+      if (c >= 0xf0) c = (c & 7) << 18 | (b[i++] & 63) << 12 | (b[i++] & 63) << 6 | b[i++] & 63;
+      else if (c >= 0xe0) c = (c & 15) << 12 | (b[i++] & 63) << 6 | b[i++] & 63;
+      else if (c >= 0xc0) c = (c & 31) << 6 | b[i++] & 63;
+      if (c > 0xffff) { c -= 0x10000; s += String.fromCharCode(0xd800 + (c >> 10), 0xdc00 + (c & 1023)); } else s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function b64enc(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 3) {
+      var n = bytes[i] << 16 | (bytes[i + 1] || 0) << 8 | (bytes[i + 2] || 0);
+      s += B64[n >> 18 & 63] + B64[n >> 12 & 63] + (i + 1 < bytes.length ? B64[n >> 6 & 63] : '') + (i + 2 < bytes.length ? B64[n & 63] : '');
+    }
+    return s;
+  }
+  function b64dec(s) {
+    var out = [], buf = 0, bits = 0;
+    for (var i = 0; i < s.length; i++) {
+      var v = B64.indexOf(s.charAt(i)); if (v < 0) return null;
+      buf = buf << 6 | v; bits += 6;
+      if (bits >= 8) { bits -= 8; out.push(buf >> bits & 255); }
+    }
+    return out;
+  }
+  function checksum(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul ? Math.imul(h, 16777619) : (h * 16777619) | 0; } return ('0000' + ((h >>> 0) & 0xffff).toString(16)).slice(-4); }
+  function packPattern(p) {
+    var n = normalizePattern(p), l = {};
+    for (var i = 0; i < LANES.length; i++) { var row = n.lanes[LANES[i].id], str = '', any = false; for (var s = 0; s < STEPS; s++) { str += row[s]; if (row[s]) any = true; } if (any) l[LANES[i].id] = str; }
+    return { n: n.name, k: n.kit, b: n.bpm, w: Math.round(n.swing * 100), o: n.own ? 1 : 0, l: l };
+  }
+  function unpackPattern(c) {
+    if (!c || typeof c !== 'object') return null;
+    var lanes = {};
+    if (c.l && typeof c.l === 'object') for (var id in c.l) if (Object.prototype.hasOwnProperty.call(c.l, id) && typeof c.l[id] === 'string') lanes[id] = c.l[id].split('').map(Number);
+    return normalizePattern({ name: c.n, kit: kitById(c.k) ? c.k : KITS[0].id, bpm: c.b, swing: (+c.w || 0) / 100, own: c.o !== 0, lanes: lanes });
+  }
+  function wrapShare(obj) { var body = b64enc(utf8Bytes(JSON.stringify(obj))); return SHARE_PREFIX + '.' + body + '.' + checksum(body); }
+  function exportBeat(p) { return wrapShare({ t: 'beat', p: packPattern(p) }); }
+  function exportLab(slots, chain) {
+    var s = [];
+    for (var i = 0; i < MAX_SLOTS; i++) s.push(slots && slots[i] ? packPattern(slots[i]) : 0);
+    var c = (chain || []).filter(function (x) { return x >= 0 && x < MAX_SLOTS && s[x]; }).slice(0, MAX_CHAIN);
+    return wrapShare({ t: 'lab', s: s, c: c });
+  }
+  // reads a code out of whatever was pasted or opened (a message, a file); never throws
+  function importCode(text) {
+    if (typeof text !== 'string' || !text) return { ok: false, error: 'empty' };
+    if (text.length > SHARE_MAX * 2) return { ok: false, error: 'too-big' };
+    var m = /PD(\d+)\.([A-Za-z0-9_-]+)\.([0-9a-f]{4})/.exec(text.replace(/\s+/g, ''));
+    if (!m) return { ok: false, error: 'no-code' };
+    if (m[1] !== '1') return { ok: false, error: 'newer' };
+    if (m[2].length > SHARE_MAX) return { ok: false, error: 'too-big' };
+    if (checksum(m[2]) !== m[3]) return { ok: false, error: 'damaged' };
+    var bytes = b64dec(m[2]), obj;
+    try { obj = JSON.parse(utf8String(bytes)); } catch (e) { return { ok: false, error: 'damaged' }; }
+    if (!obj || typeof obj !== 'object') return { ok: false, error: 'damaged' };
+    if (obj.t === 'beat') { var p = unpackPattern(obj.p); return p ? { ok: true, kind: 'beat', pattern: p } : { ok: false, error: 'damaged' }; }
+    if (obj.t === 'lab' && Array.isArray(obj.s)) {
+      var slots = [];
+      for (var i = 0; i < MAX_SLOTS; i++) slots.push(obj.s[i] ? unpackPattern(obj.s[i]) : null);
+      var chain = (Array.isArray(obj.c) ? obj.c : []).map(function (x) { return x | 0; }).filter(function (x) { return x >= 0 && x < MAX_SLOTS && slots[x]; }).slice(0, MAX_CHAIN);
+      if (!slots.some(Boolean)) return { ok: false, error: 'empty' };
+      return { ok: true, kind: 'lab', slots: slots, chain: chain };
+    }
+    return { ok: false, error: 'damaged' };
+  }
+  var IMPORT_ERRORS = {
+    empty: 'Paste a beat code or open a beat file first.',
+    'no-code': 'No beat code found. Codes start with PD1.',
+    newer: 'That code is from a newer Pocket Decks. Update the app to open it.',
+    'too-big': 'That is too big to be a beat code.',
+    damaged: 'That code is damaged. Copy the whole code and try again.'
+  };
+
+  // ---------- the recordings library (the audio itself lives in the page's IndexedDB) ----------
+  var REC_MAX_COUNT = 20, REC_MAX_BYTES = 50 * 1024 * 1024;
+  function recUsage(list) { var b = 0; for (var i = 0; i < list.length; i++) b += list[i].size || 0; return { count: list.length, bytes: b }; }
+  function recRoom(list, size) {
+    var u = recUsage(list);
+    if (size > REC_MAX_BYTES) return { ok: false, reason: 'too-long' };
+    if (u.count >= REC_MAX_COUNT) return { ok: false, reason: 'count' };
+    if (u.bytes + size > REC_MAX_BYTES) return { ok: false, reason: 'bytes' };
+    return { ok: true };
+  }
+  function recName(name, fallback) { var n = typeof name === 'string' ? name.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40) : ''; return n || fallback || 'My set'; }
+  function recDefaultName(list, venueName) {
+    var base = venueName ? venueName + ' set' : 'Practice set', n = 1;
+    var names = list.map(function (r) { return r.name; });
+    while (names.indexOf(base + ' ' + n) >= 0) n++;
+    return base + ' ' + n;
+  }
+  function recSorted(list) { return list.slice().sort(function (a, b) { return (b.created || 0) - (a.created || 0); }); }
+  function recRename(list, id, name) { return list.map(function (r) { return r.id === id ? Object.assign({}, r, { name: recName(name, r.name) }) : r; }); }
+  function recRemove(list, id) { return list.filter(function (r) { return r.id !== id; }); }
+  function fmtBytes(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+  return {
+    STEPS: STEPS, SAVE_VERSION: SAVE_VERSION, MAX_SLOTS: MAX_SLOTS, MAX_CHAIN: MAX_CHAIN, NOTES: NOTES,
+    LANES: LANES, KITS: KITS, EFFECTS: EFFECTS, VENUES: VENUES, RANKS: RANKS, REWARDS: REWARDS, FREE_VENUES: FREE_VENUES,
+    PACKS: PACKS, HYPE_MAX: HYPE_MAX, BUILD_BEATS: BUILD_BEATS, DROP_WINDOW: DROP_WINDOW,
+    makeRng: makeRng, clamp: clamp, mod: mod, kitById: kitById, laneById: laneById, effectById: effectById, packById: packById,
+    emptyPattern: emptyPattern, fromText: fromText, normalizePattern: normalizePattern, clonePattern: clonePattern,
+    toggleStep: toggleStep, clearLane: clearLane, hitCount: hitCount, rateGroove: rateGroove,
+    makeTrack: makeTrack, packTrack: packTrack, trackLength: trackLength, trackHits: trackHits, trackHasKick: trackHasKick,
+    stepsPerSecond: stepsPerSecond, swingDelay: swingDelay,
+    createDeck: createDeck, loadDeck: loadDeck, deckStepAt: deckStepAt, deckPos: deckPos, setPlaying: setPlaying,
+    setLoop: setLoop, setStutter: setStutter, cueJump: cueJump, setCue: setCue, syncDeck: syncDeck, nudgeBpm: nudgeBpm,
+    advanceDeck: advanceDeck, phaseGap: phaseGap, inSync: inSync, deckBarPos: deckBarPos, setRiser: setRiser,
+    newProgress: newProgress, normalizeProgress: normalizeProgress, venueCleared: venueCleared, rankIndex: rankIndex,
+    totalStars: totalStars, venueOpen: venueOpen, venueLockReason: venueLockReason, itemState: itemState, canUse: canUse,
+    nextUnlock: nextUnlock, library: library,
+    createGig: createGig, tickGig: tickGig, setCrossfader: setCrossfader, setFilter: setFilter, setEcho: setEcho,
+    audibleGain: audibleGain, deckLevel: deckLevel, mainDeck: mainDeck, venueTaste: venueTaste, goalProgress: goalProgress,
+    exportBeat: exportBeat, exportLab: exportLab, importCode: importCode, IMPORT_ERRORS: IMPORT_ERRORS, SHARE_PREFIX: SHARE_PREFIX,
+    REC_MAX_COUNT: REC_MAX_COUNT, REC_MAX_BYTES: REC_MAX_BYTES, recUsage: recUsage, recRoom: recRoom, recName: recName, recDefaultName: recDefaultName,
+    recSorted: recSorted, recRename: recRename, recRemove: recRemove, fmtBytes: fmtBytes,
+    goalsMet: goalsMet, crowdRating: crowdRating, playerActed: playerActed, CLASH_COST: CLASH_COST, gigResult: gigResult, applyResult: applyResult, restoreGig: restoreGig, tense: tense
+  };
+})();
+/* ENGINE:END */
+</script>
+<script>
+(function () {
+  'use strict';
+  var E = Engine;
+  var GAME = 'pocketdecks';
+  var SAVE_KEY = GAME + '.save', SET_KEY = GAME + '.settings', UNLOCK_KEY = GAME + '.unlock', PLAYTEST_KEY = GAME + '.playtest';
+  var PRODUCT = 'full_unlock';
+  function $(id) { return document.getElementById(id); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function el(tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html !== undefined) n.innerHTML = html; return n; }
+
+  // ================= billing bridge (same contract as the owner's other games) =================
+  function createBilling(opts) {
+    var key = opts.storageKey, product = opts.productId, bridge = window.AndroidBilling || null;
+    var st = { product: product, available: !!bridge, ready: false, owned: false, pending: false, busy: false, price: null, error: null };
+    try { st.owned = localStorage.getItem(key) === '1'; } catch (e) { }
+    var L = [];
+    var emit = function () { for (var i = 0; i < L.length; i++) { try { L[i](st); } catch (e) { } } };
+    var setOwned = function (v) { st.owned = !!v; try { localStorage.setItem(key, st.owned ? '1' : '0'); } catch (e) { } };
+    function handle(m) {
+      if (!m || typeof m !== 'object' || (m.product && m.product !== product)) return;
+      switch (m.type) {
+        case 'ready': st.ready = true; st.error = null; break;
+        case 'unavailable': st.ready = false; st.busy = false; st.error = String(m.message || 'Google Play is not available right now.'); break;
+        case 'price': st.price = typeof m.price === 'string' ? m.price.slice(0, 24) : null; break;
+        case 'owned': setOwned(m.owned === true); st.pending = m.pending === true; st.busy = false; break;
+        case 'purchased': setOwned(true); st.pending = false; st.busy = false; st.error = null; break;
+        case 'pending': st.pending = true; st.busy = false; break;
+        case 'cancelled': st.busy = false; break;
+        case 'error': st.busy = false; st.error = String(m.message || 'Something went wrong with Google Play.').slice(0, 200); break;
+        default: return;
+      }
+      emit();
+    }
+    window.__billingEvent = function (j) {
+      var m = j;
+      if (typeof j === 'string') { try { m = JSON.parse(j); } catch (e) { return; } }
+      handle(m);
+    };
+    return {
+      state: st,
+      onChange: function (f) { L.push(f); },
+      start: function () { if (bridge) { try { bridge.start(product); } catch (e) { handle({ type: 'unavailable' }); } } },
+      buy: function () {
+        if (!bridge || st.owned) return false;
+        st.busy = true; st.error = null; emit();
+        try { bridge.buy(product); } catch (e) { handle({ type: 'error', message: 'The purchase could not be started.' }); }
+        return true;
+      },
+      restore: function () {
+        if (!bridge) return false;
+        st.busy = true; st.error = null; emit();
+        try { bridge.restore(product); } catch (e) { handle({ type: 'error', message: 'Google Play could not be asked just now.' }); }
+        setTimeout(function () { if (st.busy) { st.busy = false; emit(); } }, 8000);
+        return true;
+      }
+    };
+  }
+  var billing = createBilling({ storageKey: UNLOCK_KEY, productId: PRODUCT });
+  var playtest = lsGet(GAME + '.playtest') === 'full';   // the one playtest switch (see PLAY.md)
+  function owned() { return playtest || billing.state.owned; }
+
+  // ================= settings & save =================
+  var settings = { sound: true, reduce: false, big: false };
+  try { settings.reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { }
+  (function () {
+    var raw = lsGet(SET_KEY); if (!raw) return;
+    try { var o = JSON.parse(raw); if (o && typeof o === 'object') for (var k in settings) if (typeof o[k] === 'boolean') settings[k] = o[k]; } catch (e) { }
+  })();
+  function saveSettings() { lsSet(SET_KEY, JSON.stringify(settings)); }
+
+  var progress = E.newProgress();
+  var lab = { pattern: E.clonePattern(E.packById('starter')), slots: [], chain: [], lane: 'kick', pen: 1, made: 0 };
+  for (var si = 0; si < E.MAX_SLOTS; si++) lab.slots.push(null);
+  var resumeRun = null;
+  (function () {
+    var raw = lsGet(SAVE_KEY); if (!raw) return;
+    try {
+      var o = JSON.parse(raw);
+      if (!o || o.v !== E.SAVE_VERSION) return;
+      progress = E.normalizeProgress(o.progress);
+      if (o.lab && typeof o.lab === 'object') {
+        if (o.lab.pattern) lab.pattern = E.normalizePattern(o.lab.pattern);
+        if (Array.isArray(o.lab.slots)) for (var i = 0; i < E.MAX_SLOTS; i++) lab.slots[i] = o.lab.slots[i] ? E.normalizePattern(o.lab.slots[i]) : null;
+        if (Array.isArray(o.lab.chain)) lab.chain = o.lab.chain.filter(function (x) { return x >= 0 && x < E.MAX_SLOTS && lab.slots[x]; }).slice(0, E.MAX_CHAIN);
+        if (E.laneById(o.lab.lane)) lab.lane = o.lab.lane;
+        lab.made = Math.max(0, o.lab.made | 0);
+      }
+      resumeRun = o.run ? E.restoreGig(o.run) : null;
+    } catch (e) { }
+  })();
+  var gig = null;        // the gig in play (or null in practice)
+  var practice = null;   // the practice decks (same deck model, no crowd)
+  var mode = 'home';     // home | lab | decks | gigs
+  var gigState = 'off';  // off | count | live | paused | over
+  function save() {
+    var run = (gig && !gig.done && (gigState === 'live' || gigState === 'paused' || gigState === 'count')) ? gig : null;
+    lsSet(SAVE_KEY, JSON.stringify({ v: E.SAVE_VERSION, progress: progress, lab: { pattern: lab.pattern, slots: lab.slots, chain: lab.chain, lane: lab.lane, made: lab.made }, run: run }));
+  }
+  var saveTimer = 0;
+  function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+
+  // ================= audio: every sound is synthesized here =================
+  var ctx = null, master = null, comp = null, outNode = null, echoIn = null, echoDelay = null, noiseBuf = null, labBus = null, recDest = null;
+  var deckOut = [];
+  function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function ensureAudio() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return true; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try { ctx = new AC({ latencyHint: 'interactive' }); } catch (e) { try { ctx = new AC(); } catch (e2) { return false; } }
+    master = ctx.createGain(); master.gain.value = settings.sound ? 0.6 : 0;
+    comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.18;
+    // a brick-wall limiter after the glue compressor keeps phone speakers from clipping
+    var lim = ctx.createDynamicsCompressor(); lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.08;
+    var out = ctx.createGain(); out.gain.value = 0.85;
+    master.connect(comp); comp.connect(lim); lim.connect(out); out.connect(ctx.destination); outNode = out;
+    // echo: a send that every deck and the lab can feed
+    echoIn = ctx.createGain(); echoIn.gain.value = 0;
+    echoDelay = ctx.createDelay(2); echoDelay.delayTime.value = 0.375;
+    var fb = ctx.createGain(); fb.gain.value = 0.45;
+    var tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 3200;
+    echoIn.connect(echoDelay); echoDelay.connect(tone); tone.connect(fb); fb.connect(echoDelay); tone.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    var ch = noiseBuf.getChannelData(0), r = E.makeRng(7);
+    for (var i = 0; i < ch.length; i++) ch[i] = r() * 2 - 1;
+    labBus = ctx.createGain(); labBus.gain.value = 1; labBus.connect(master);
+    for (var d = 0; d < 2; d++) {
+      var inp = ctx.createGain(), lp = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), xf = ctx.createGain(), send = ctx.createGain();
+      lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = 5;
+      hp.type = 'highpass'; hp.frequency.value = 20; hp.Q.value = 5;
+      inp.connect(lp); lp.connect(hp); hp.connect(xf); xf.connect(master); xf.connect(send); send.connect(echoIn); send.gain.value = 1;
+      deckOut.push({ inp: inp, lp: lp, hp: hp, xf: xf, f: 0 });
+    }
+    labBus.connect(echoIn);
+    return true;
+  }
+  function noise(t, dur, dest) { var s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05); return s; }
+  function env(t, peak, decay, attack) {
+    var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + (attack || 0.002));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (attack || 0.002) + decay);
+    return g;
+  }
+  // one hit of one lane at time t through dest
+  function voice(kit, lane, note, t, dest, vel) {
+    var k = E.kitById(kit) || E.KITS[0], v = vel || 1, o, g, f, n;
+    switch (lane) {
+      case 'kick':
+        o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(k.kick.f0 * 1.6, t); o.frequency.exponentialRampToValueAtTime(k.kick.f0, t + 0.012);
+        o.frequency.exponentialRampToValueAtTime(k.kick.f1, t + 0.09);
+        g = env(t, 1.0 * k.kick.punch * v, k.kick.decay); o.connect(g); g.connect(dest); o.start(t); o.stop(t + k.kick.decay + 0.05);
+        // a tiny click so phone speakers hear the kick land
+        f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500; g = env(t, 0.25 * v, 0.012);
+        f.connect(g); g.connect(dest); noise(t, 0.02, f);
+        break;
+      case 'snare':
+        f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = k.snare.bright * 0.5;
+        g = env(t, 0.55 * v, k.snare.decay); f.connect(g); g.connect(dest); noise(t, k.snare.decay, f);
+        o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(k.snare.tone * 1.4, t); o.frequency.exponentialRampToValueAtTime(k.snare.tone, t + 0.03);
+        g = env(t, 0.4 * v, 0.09); o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.15);
+        break;
+      case 'clap':
+        f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = k.clap.bright; f.Q.value = 1.1;
+        g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+        [0, 0.011, 0.022].forEach(function (d) { g.gain.setValueAtTime(0.7 * v, t + d); g.gain.exponentialRampToValueAtTime(0.08, t + d + 0.009); });
+        g.gain.setValueAtTime(0.6 * v, t + 0.033); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.033 + k.clap.decay);
+        f.connect(g); g.connect(dest); noise(t, 0.05 + k.clap.decay, f);
+        break;
+      case 'hat': case 'ohat':
+        var hp = lane === 'hat' ? k.hat : k.ohat;
+        f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp.cut;
+        g = env(t, (lane === 'hat' ? 0.32 : 0.28) * v, hp.decay); f.connect(g); g.connect(dest); noise(t, hp.decay, f);
+        break;
+      case 'perc':
+        o = ctx.createOscillator(); o.type = k.perc.wave; o.frequency.setValueAtTime(k.perc.f * 1.5, t); o.frequency.exponentialRampToValueAtTime(k.perc.f, t + 0.02);
+        g = env(t, 0.45 * v, k.perc.decay); o.connect(g); g.connect(dest); o.start(t); o.stop(t + k.perc.decay + 0.05);
+        break;
+      case 'bass': case 'lead':
+        var p = lane === 'bass' ? k.bass : k.lead;
+        n = k.root + k.scale[E.clamp((note | 0) - 1, 0, k.scale.length - 1)] + 12 * p.oct;
+        f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = lane === 'bass' ? 4 : 2;
+        f.frequency.setValueAtTime(p.cut * 3.2, t); f.frequency.exponentialRampToValueAtTime(p.cut, t + p.decay * 0.7);
+        g = env(t, (lane === 'bass' ? 0.5 : 0.22) * v, p.decay, 0.004);
+        f.connect(g); g.connect(dest);
+        [0, lane === 'lead' ? 7 : -5].forEach(function (cents, i) {
+          o = ctx.createOscillator(); o.type = p.wave; o.frequency.value = midiHz(n); o.detune.value = cents;
+          var og = ctx.createGain(); og.gain.value = i ? 0.5 : 1; o.connect(og); og.connect(f); o.start(t); o.stop(t + p.decay + 0.08);
+        });
+        break;
+    }
+  }
+  function playHits(track, step, t, dest, vel) {
+    var hits = E.trackHits(track, step);
+    for (var i = 0; i < hits.length; i++) voice(track.patterns[Math.floor(E.mod(step, E.trackLength(track)) / E.STEPS)].kit, hits[i].lane, hits[i].note, t, dest, vel);
+  }
+  function sfx(kind) {
+    if (!ctx || !settings.sound) return;
+    var t = ctx.currentTime + 0.01, o = ctx.createOscillator(), g;
+    if (kind === 'goal') { o.type = 'triangle'; o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(990, t + 0.08); g = env(t, 0.18, 0.25); }
+    else if (kind === 'clash') { o.type = 'sawtooth'; o.frequency.setValueAtTime(120, t); o.frequency.linearRampToValueAtTime(80, t + 0.2); g = env(t, 0.12, 0.25); }
+    else { o.type = 'sine'; o.frequency.value = 880; g = env(t, 0.1, 0.1); }
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.4);
+    if (kind === 'drop' || kind === 'blend') { var c = ctx.createGain(); c.gain.value = 1; c.connect(master); var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.7; var ge = env(t, 0.22, 1.2, 0.05); f.connect(ge); ge.connect(c); noise(t, 1.3, f); }
+  }
+  // the riser: a white-noise sweep on its own voice
+  var riserNode = null;
+  function riserStart() {
+    if (!ctx) return;
+    var t = ctx.currentTime, f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3;
+    f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(7000, t + 8);
+    var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 7.5);
+    f.connect(g); g.connect(master); var s = noise(t, 8.2, f);
+    riserNode = { s: s, g: g };
+  }
+  function riserStop() {
+    if (!riserNode || !ctx) return;
+    var t = ctx.currentTime; try { riserNode.g.gain.cancelScheduledValues(t); riserNode.g.gain.setValueAtTime(riserNode.g.gain.value, t); riserNode.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); riserNode.s.stop(t + 0.1); } catch (e) { }
+    riserNode = null;
+  }
+  function applySound() { if (master) master.gain.setTargetAtTime(settings.sound ? 0.6 : 0, ctx.currentTime, 0.02); }
+
+  // ================= the lab sequencer =================
+  var labPlay = { on: false, track: null, step: 0, next: 0, chain: false };
+  var LOOKAHEAD = 0.12;
+  function labTrack() {
+    if (labPlay.chain && lab.chain.length) return E.makeTrack(lab.chain.map(function (i) { return lab.slots[i]; }), 'Your track');
+    return E.makeTrack([lab.pattern], lab.pattern.name);
+  }
+  function startLab(chain) {
+    if (!ensureAudio()) return;
+    stopDecks();
+    labPlay.chain = !!chain; labPlay.on = true; labPlay.track = labTrack(); labPlay.step = 0; labPlay.next = ctx.currentTime + 0.05;
+    renderLabTransport();
+  }
+  function stopLab() { labPlay.on = false; renderLabTransport(); paintPlayhead(-1); }
+  function scheduleLab() {
+    if (!labPlay.on || !ctx) return;
+    var t = labPlay.track, bpm = labPlay.chain ? t.bpm : lab.pattern.bpm, swing = labPlay.chain ? t.swing : lab.pattern.swing;
+    var spsDur = 1 / E.stepsPerSecond(bpm);
+    while (labPlay.next < ctx.currentTime + LOOKAHEAD) {
+      var len = E.trackLength(t), st = E.mod(labPlay.step, len);
+      playHits(t, st, labPlay.next + E.swingDelay(st, bpm, swing), labBus);
+      queueVisual(labPlay.next, st);
+      labPlay.next += spsDur; labPlay.step++;
+    }
+  }
+  var visQ = [];
+  function queueVisual(t, step) { visQ.push([t, step]); if (visQ.length > 64) visQ.shift(); }
+  // live edits are heard on the next pass of the pattern
+  function labChanged() {
+    lab.pattern.own = true;
+    if (E.packById(lab.pattern.name.toLowerCase().replace(/\s+/g, '-')) || lab.pattern.name === 'Starter Groove' || lab.pattern.name === 'New beat') {
+      lab.made++; lab.pattern.name = 'My beat ' + lab.made; $('beatName').value = lab.pattern.name;
+    }
+    if (labPlay.on && !labPlay.chain) labPlay.track = labTrack();
+    renderGroove(); saveSoon();
+  }
+
+  // ================= decks (practice and gigs share them) =================
+  function currentDecks() { return gig ? gig.decks : practice.decks; }
+  function newPractice() {
+    practice = { decks: [E.createDeck(), E.createDeck()], xf: 0, echo: false };
+    E.loadDeck(practice.decks[0], E.packTrack('first-light'));
+    E.loadDeck(practice.decks[1], E.packTrack('dust-shuffle'));
+  }
+  newPractice();
+  var sched = [{ upTo: -1 }, { upTo: -1 }];
+  var lastT = 0;
+  function xfValue() { return gig ? gig.xf : practice.xf; }
+  function stopDecks() {
+    var ds = practice.decks; ds[0].playing = false; ds[1].playing = false;
+  }
+  function scheduleDecks(now) {
+    var ds = currentDecks();
+    for (var i = 0; i < 2; i++) {
+      var d = ds[i];
+      if (!d.playing || !d.track) { sched[i].upTo = Math.floor(d.clock); continue; }
+      var sps = E.stepsPerSecond(d.bpm);
+      var horizon = d.clock + LOOKAHEAD * sps;
+      if (sched[i].upTo < Math.floor(d.clock) - 1) sched[i].upTo = Math.floor(d.clock) - 1;
+      for (var k = sched[i].upTo + 1; k <= horizon; k++) {
+        var st = E.deckStepAt(d, k), t = now + (k - d.clock) / sps + E.swingDelay(E.mod(st, 16), d.bpm, d.track.swing);
+        if (t < now - 0.01) continue;
+        playHits(d.track, st, Math.max(now, t), deckOut[i].inp);
+        sched[i].upTo = k;
+      }
+    }
+  }
+  function applyMix() {
+    if (!ctx) return;
+    var ds = currentDecks(), x = xfValue(), now = ctx.currentTime;
+    for (var i = 0; i < 2; i++) {
+      var o = deckOut[i], f = ds[i].filter;
+      var g = i === 0 ? Math.cos(x * Math.PI / 2) : Math.sin(x * Math.PI / 2);
+      o.xf.gain.setTargetAtTime(g, now, 0.015);
+      var lpHz = f < 0 ? 18000 * Math.pow(0.012, -f) : 20000, hpHz = f > 0 ? 20 * Math.pow(300, f) : 20;
+      o.lp.frequency.setTargetAtTime(lpHz, now, 0.02); o.hp.frequency.setTargetAtTime(hpHz, now, 0.02);
+    }
+    var echoOn = gig ? gig.echo : practice.echo;
+    echoIn.gain.setTargetAtTime(echoOn ? 0.5 : 0, now, 0.02);
+    var main = ds[gig ? E.mainDeck(gig) : (x > 0.5 ? 1 : 0)];
+    if (main && main.bpm) echoDelay.delayTime.setTargetAtTime(Math.min(1.9, 3 / E.stepsPerSecond(main.bpm)), now, 0.05);
+  }
+
+  // ================= main loop =================
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!ctx) return;
+    var now = ctx.currentTime, dt = Math.min(0.1, Math.max(0, now - lastT)); lastT = now;
+    scheduleLab();
+    if (gig && gigState === 'live') {
+      var ev = E.tickGig(gig, dt);
+      for (var i = 0; i < ev.length; i++) onGigEvent(ev[i]);
+    } else if (!gig) { E.advanceDeck(practice.decks[0], dt); E.advanceDeck(practice.decks[1], dt); }
+    if (!gig || gigState === 'live') scheduleDecks(now);
+    applyMix();
+    paint(now);
+  }
+  function tick() { scheduleLab(); if (ctx && (!gig || gigState === 'live')) { /* keep scheduling while the screen is busy */ } }
+  setInterval(function () { if (ctx && document.visibilityState === 'visible') scheduleLab(); }, 25);
+
+  // ================= painting =================
+  var lastPaintStep = -2;
+  function paint(now) {
+    // lab playhead follows what was heard, not what was scheduled
+    var shown = -1;
+    while (visQ.length && visQ[0][0] <= now) { shown = visQ.shift()[1]; }
+    if (shown >= 0 && mode === 'lab') paintPlayhead(shown);
+    if (mode === 'decks') paintDecks();
+  }
+  function paintPlayhead(step) {
+    if (step === lastPaintStep) return;
+    lastPaintStep = step;
+    var s = step < 0 ? -1 : E.mod(step, 16);
+    var cells = $('overview').querySelectorAll('.c');
+    for (var i = 0; i < cells.length; i++) cells[i].classList.toggle('ph', +cells[i].dataset.s === s);
+    var pads = $('pads').children;
+    for (i = 0; i < pads.length; i++) pads[i].classList.toggle('ph', i === s);
+  }
+
+  // ---------- header: rank ladder and the venue road ----------
+  var ICONS = {
+    stream: '<path d="M4 6h16v10H4zM9 20h6M12 16v4" fill="none" stroke="currentColor" stroke-width="2"/>',
+    sun: '<circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" stroke="currentColor" stroke-width="2"/>',
+    bolt: '<path d="M13 2L5 14h6l-1 8 8-12h-6z" fill="currentColor"/>',
+    wave: '<path d="M2 15c3-4 5-4 8 0s5 4 8 0 3-2 4-1M2 9c3-4 5-4 8 0s5 4 8 0" fill="none" stroke="currentColor" stroke-width="2"/>',
+    moon: '<path d="M20 15A8 8 0 1 1 9 4a7 7 0 0 0 11 11z" fill="currentColor"/>',
+    crown: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z" fill="currentColor"/>'
+  };
+  function icon(name) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || '') + '</svg>'; }
+  function renderHeader() {
+    var r = E.rankIndex(progress);
+    $('rankTitle').textContent = E.RANKS[r];
+    var pips = '';
+    for (var i = 1; i < E.RANKS.length; i++) pips += '<i class="' + (i <= r ? 'on' : '') + (i === E.RANKS.length - 1 ? ' top' : '') + '"></i>';
+    $('rankPips').innerHTML = pips;
+    var nu = E.nextUnlock(progress, owned());
+    $('rankNext').textContent = nu ? 'Clear ' + E.VENUES[nu.venue].name + (nu.needsUnlock ? ' (full game)' : '') + ' to open ' + nu.items.map(itemName).join(', ') : 'Headliner. The Main Stage is yours.';
+    var html = '';
+    for (i = 0; i < E.VENUES.length; i++) {
+      var v = E.VENUES[i], done = E.venueCleared(progress, i), next = !done && E.venueOpen(progress, owned(), i);
+      if (i) html += '<span class="bar' + (done ? ' on' : '') + '"></span>';
+      html += '<button class="vn' + (done ? ' done' : '') + (next ? ' next' : '') + (i >= E.FREE_VENUES ? ' paid' : '') + (v.finale ? ' top' : '') + '" data-v="' + i + '" aria-label="' + esc(v.name) + '"><span class="dot">' + icon(v.icon) + '</span><small>' + (progress.stars[i] ? progress.stars[i] + '★' : ' ') + '</small></button>';
+    }
+    $('venueMap').innerHTML = html;
+    $('ptBadge').hidden = !playtest;
+  }
+  function itemName(it) {
+    if (it.kind === 'kit') return E.kitById(it.id).name + ' kit';
+    if (it.kind === 'lane') return E.laneById(it.id).name + ' lane';
+    if (it.kind === 'effect') return E.effectById(it.id).name;
+    return 'the Headliner title';
+  }
+
+  // ---------- home ----------
+  function renderHome() {
+    var nu = E.nextUnlock(progress, owned()), html;
+    var vi = nextVenue();
+    if (vi >= 0) {
+      var v = E.VENUES[vi];
+      html = '<div class="tiny muted">Your next gig</div><div class="row"><b class="grow">' + esc(v.name) + '</b><span class="stars">' + starStr(progress.stars[vi]) + '</span></div>' +
+        '<div class="tiny muted">' + esc(v.crowd) + '</div>' + (nu ? '<div class="tiny" style="margin-top:6px">Clear it to open: ' + esc(nu.items.map(itemName).join(', ')) + '</div>' : '') +
+        '<div class="actions" style="display:flex;gap:8px;margin-top:10px"><button id="homeGig" class="grow">Play this gig</button></div>';
+    } else html = '<b>You headlined the Main Stage.</b><div class="tiny muted">Chase three stars everywhere, or keep making beats.</div>';
+    $('homeNext').innerHTML = html;
+    var hg = $('homeGig'); if (hg) hg.onclick = function () { ensureAudio(); openVenue(vi); };
+    $('btnResume').hidden = !resumeRun;
+  }
+  function nextVenue() {
+    for (var i = 0; i < E.VENUES.length; i++) if (!E.venueCleared(progress, i)) return E.venueOpen(progress, owned(), i) ? i : (i >= E.FREE_VENUES && !owned() ? i : -1);
+    return -1;
+  }
+  function starStr(n) { var s = ''; for (var i = 0; i < 3; i++) s += i < n ? '★' : '<span class="off">★</span>'; return s; }
+
+  // ---------- lab ----------
+  function noteName(kit, n) {
+    var k = E.kitById(kit) || E.KITS[0], names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    return names[(k.root + k.scale[n - 1]) % 12];
+  }
+  function setHue() { var k = E.kitById(lab.pattern.kit) || E.KITS[0]; document.documentElement.style.setProperty('--hue', k.hue); }
+  function renderKits() {
+    var html = '';
+    E.KITS.forEach(function (k) {
+      var st = E.itemState(progress, owned(), 'kit', k.id);
+      html += '<button class="chip' + (lab.pattern.kit === k.id ? ' on' : '') + (st !== 'open' ? ' locked' : '') + '" data-kit="' + k.id + '">' + (st !== 'open' ? '<span class="lock"></span>' : '') + esc(k.name) + '</button>';
+    });
+    $('kits').innerHTML = html;
+  }
+  function laneOpen(id) { return E.canUse(progress, owned(), 'lane', id); }
+  function renderOverview() {
+    var html = '', p = lab.pattern;
+    E.LANES.forEach(function (L) {
+      var open = laneOpen(L.id);
+      html += '<span class="lbl' + (lab.lane === L.id ? ' sel' : '') + (open ? '' : ' lock') + '" data-lane="' + L.id + '">' + L.short + '</span>';
+      for (var s = 0; s < 16; s++) html += '<span class="c' + (p.lanes[L.id][s] ? ' on' : '') + ((s >> 2) % 2 ? ' q' : '') + '" data-lane="' + L.id + '" data-s="' + s + '"></span>';
+    });
+    $('overview').innerHTML = html;
+    var rows = $('overview').querySelectorAll('.c');
+    for (var i = 0; i < rows.length; i++) if (!laneOpen(rows[i].dataset.lane)) rows[i].style.opacity = '.3';
+  }
+  function renderLaneChips() {
+    var html = '';
+    E.LANES.forEach(function (L) {
+      var open = laneOpen(L.id);
+      html += '<button class="chip' + (lab.lane === L.id ? ' on' : '') + (open ? '' : ' locked') + '" data-lane="' + L.id + '">' + (open ? '' : '<span class="lock"></span>') + L.name + '</button>';
+    });
+    $('laneChips').innerHTML = html;
+  }
+  function renderPads() {
+    var L = E.laneById(lab.lane), p = lab.pattern, html = '';
+    for (var s = 0; s < 16; s++) {
+      var v = p.lanes[L.id][s];
+      html += '<button class="pad' + (v ? ' on' : '') + ((s >> 2) % 2 ? ' q' : '') + '" data-s="' + s + '" aria-label="Step ' + (s + 1) + '"><small>' + (s + 1) + '</small>' + (v && L.melodic ? noteName(p.kit, v) : '') + '</button>';
+    }
+    $('pads').innerHTML = html;
+    var pen = $('notePen');
+    pen.hidden = !L.melodic;
+    if (L.melodic) {
+      html = '';
+      for (var n = 1; n <= E.NOTES; n++) html += '<button data-n="' + n + '" class="' + (lab.pen === n ? 'on' : '') + '">' + noteName(p.kit, n) + (n > 5 ? '↑' : '') + '</button>';
+      pen.innerHTML = html;
+    }
+  }
+  function renderGroove() {
+    var r = E.rateGroove(lab.pattern);
+    $('grooveVal').textContent = Math.round(r.score * 100) + '%';
+    $('grooveBar').style.width = Math.round(r.score * 100) + '%';
+    $('grooveReady').textContent = r.ready ? 'Crowd-ready' : '';
+    $('grooveReady').style.color = 'var(--good)';
+    $('grooveTip').textContent = r.tip || 'Sounds ready. Save it to a slot and take it to the decks.';
+  }
+  function renderLabTransport() {
+    $('labPlay').innerHTML = labPlay.on ? '&#9632;' : '&#9654;';
+    $('labPlay').setAttribute('aria-label', labPlay.on ? 'Stop' : 'Play');
+    $('chainPlay').textContent = labPlay.on && labPlay.chain ? 'Stop track' : 'Play track';
+    $('labBpm').textContent = lab.pattern.bpm;
+    $('labSwing').value = Math.round(lab.pattern.swing * 100);
+    $('labSwingVal').textContent = Math.round(lab.pattern.swing * 100) + '%';
+  }
+  function renderSlots() {
+    var html = '';
+    for (var i = 0; i < E.MAX_SLOTS; i++) {
+      var s = lab.slots[i], L = String.fromCharCode(65 + i);
+      html += '<button class="slot' + (s ? '' : ' empty') + (lab.chain.indexOf(i) >= 0 ? ' inchain' : '') + '" data-slot="' + i + '"><b>' + L + '</b>' + (s ? esc(s.name) : 'Save here') + '</button>';
+    }
+    $('slots').innerHTML = html;
+    html = '';
+    lab.chain.forEach(function (si, idx) { html += '<button class="link" data-ci="' + idx + '" aria-label="Remove from track">' + String.fromCharCode(65 + si) + ' &times;</button>'; });
+    $('chain').innerHTML = html || '<span class="tiny muted">Empty. Up to ' + E.MAX_CHAIN + ' beats.</span>';
+  }
+  function renderLab() {
+    setHue(); $('beatName').value = lab.pattern.name;
+    renderLabTransport(); renderKits(); renderGroove(); renderOverview(); renderLaneChips(); renderPads(); renderSlots();
+  }
+  function lockedToast(kind, id) {
+    var st = E.itemState(progress, owned(), kind, id), it = kind === 'kit' ? E.kitById(id) : kind === 'lane' ? E.laneById(id) : E.effectById(id);
+    if (st === 'unlock') { openUnlock(); return; }
+    toast('Clear ' + E.VENUES[it.venue].name + ' to open ' + it.name + '.');
+  }
+  function selectLane(id) {
+    if (!laneOpen(id)) { lockedToast('lane', id); return; }
+    lab.lane = id; renderOverview(); renderLaneChips(); renderPads(); saveSoon();
+    if (ensureAudio()) voice(lab.pattern.kit, id, lab.pen, ctx.currentTime + 0.01, labBus);
+  }
+  function tapStep(lane, s) {
+    if (!laneOpen(lane)) { lockedToast('lane', lane); return; }
+    var v = E.toggleStep(lab.pattern, lane, s, lab.pen);
+    if (v && ensureAudio() && !labPlay.on) voice(lab.pattern.kit, lane, v, ctx.currentTime + 0.005, labBus);
+    labChanged(); renderOverview(); renderPads();
+    coachLab();
+  }
+  var labCoach = 0;
+  function coachLab() {
+    if (labCoach === 0 && E.hitCount(lab.pattern) !== E.hitCount(E.packById('starter'))) { labCoach = 1; toast('Nice. Every tap changes the beat as it plays.'); }
+  }
+
+  // slot actions
+  function openSlot(i) {
+    var s = lab.slots[i], L = String.fromCharCode(65 + i), b = $('slotSheet').firstElementChild;
+    var html = '<h2>Slot ' + L + (s ? ': ' + esc(s.name) : '') + '</h2><div class="list">';
+    html += '<button data-a="save"><span>Save "' + esc(lab.pattern.name) + '" here</span><span>&rsaquo;</span></button>';
+    if (s) {
+      html += '<button data-a="load"><span>Open in the Lab</span><span>&rsaquo;</span></button>';
+      html += '<button data-a="chain"' + (lab.chain.length >= E.MAX_CHAIN ? ' disabled' : '') + '><span>Add to track</span><span>&rsaquo;</span></button>';
+      html += '<button data-a="clear"><span>Empty this slot</span><span>&rsaquo;</span></button>';
+    }
+    html += '</div><div class="actions"><button data-a="close">Close</button></div>';
+    b.innerHTML = html;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      var act = a.dataset.a;
+      if (act === 'save') { lab.slots[i] = E.clonePattern(lab.pattern); lab.slots[i].own = lab.pattern.own; toast('Saved to slot ' + L + '.'); }
+      else if (act === 'load') { lab.pattern = E.clonePattern(s); if (labPlay.on && !labPlay.chain) labPlay.track = labTrack(); }
+      else if (act === 'chain') { lab.chain.push(i); toast('Added ' + L + ' to your track.'); }
+      else if (act === 'clear') { lab.slots[i] = null; lab.chain = lab.chain.filter(function (x) { return x !== i; }); }
+      hideSheet('slotSheet'); renderLab(); saveSoon();
+    };
+    showSheet('slotSheet');
+  }
+  // the player's tracks for the decks: the beat in the Lab, every saved slot, and the chained track
+  function ownTracks() {
+    var out = [{ ref: 'lab', name: 'Lab: ' + lab.pattern.name, kit: lab.pattern.kit, bpm: lab.pattern.bpm, own: lab.pattern.own }];
+    for (var i = 0; i < E.MAX_SLOTS; i++) if (lab.slots[i]) out.push({ ref: 'slot:' + i, name: String.fromCharCode(65 + i) + ': ' + lab.slots[i].name, kit: lab.slots[i].kit, bpm: lab.slots[i].bpm, own: lab.slots[i].own });
+    if (lab.chain.length) out.push({ ref: 'chain', name: 'Your track (' + lab.chain.length + ' beats)', kit: lab.slots[lab.chain[0]].kit, bpm: lab.slots[lab.chain[0]].bpm, own: true });
+    return out;
+  }
+  function trackFromRef(ref) {
+    if (ref === 'lab') return E.makeTrack([lab.pattern], lab.pattern.name, 'lab');
+    if (ref === 'chain' && lab.chain.length) return E.makeTrack(lab.chain.map(function (i) { return lab.slots[i]; }), 'Your track', 'chain');
+    var m = /^slot:(\d)$/.exec(ref); if (m && lab.slots[+m[1]]) return E.makeTrack([lab.slots[+m[1]]], lab.slots[+m[1]].name, ref);
+    m = /^pack:([a-z-]+)$/.exec(ref); if (m) return E.packTrack(m[1]);
+    return null;
+  }
+  // a beat made with a kit the player can't use yet can still be played; packs follow the kit rules
+  function refUsable(ref) {
+    var m = /^pack:([a-z-]+)$/.exec(ref);
+    if (!m) return true;
+    if (gig && E.VENUES[gig.venue].decks.indexOf(ref) >= 0) return true;   // the venue's own packs are always there
+    var p = E.packById(m[1]); return !!p && E.canUse(progress, owned(), 'kit', p.kit);
+  }
+
+  // ---------- decks ----------
+  var deckEls = [], cueHeld = false, cueTold = false;
+  function buildDecks() {
+    var nodes = document.querySelectorAll('.deck');
+    for (var i = 0; i < 2; i++) {
+      var n = nodes[i], L = i ? 'B' : 'A', beats = '';
+      for (var s = 0; s < 16; s++) beats += '<i class="' + (s % 4 === 0 ? 'b' : '') + (s === 0 ? ' one' : '') + '"></i>';
+      n.innerHTML = '<div class="name"></div><div class="meta"></div>' +
+        '<div class="bpmrow"><button data-a="slower" aria-label="Deck ' + L + ' slower">&minus;</button><b class="bpmv" title="Beats per minute">96</b><button data-a="faster" aria-label="Deck ' + L + ' faster">+</button></div>' +
+        '<div class="beats" aria-hidden="true">' + beats + '</div>' +
+        '<div class="btns"><button data-a="play">Play</button><button data-a="sync" class="sync">Sync</button>' +
+        '<button data-a="loop">Loop</button><button data-a="stutter">Stutter</button>' +
+        '<button data-a="cue" aria-label="Cue: tap to jump back, hold to set">Cue</button><button data-a="load">Load</button></div>' +
+        '<div class="flt">Filter: hold &amp; drag</div><input type="range" min="-100" max="100" value="0" data-a="filter" aria-label="Deck ' + L + ' filter">';
+      deckEls.push({ root: n, name: n.querySelector('.name'), meta: n.querySelector('.meta'), bpm: n.querySelector('.bpmv'), beats: n.querySelectorAll('.beats i'),
+        play: n.querySelector('[data-a=play]'), sync: n.querySelector('[data-a=sync]'), loop: n.querySelector('[data-a=loop]'), stutter: n.querySelector('[data-a=stutter]'),
+        filter: n.querySelector('[data-a=filter]'), ready: n.querySelector('.flt'), lastBeat: -1, lastKey: '' });
+      wireDeck(i, n);
+    }
+  }
+  function wireDeck(i, n) {
+    n.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      ensureAudio();
+      var ds = currentDecks(), d = ds[i], o = ds[1 - i];
+      switch (b.dataset.a) {
+        case 'play': if (labPlay.on) stopLab(); E.setPlaying(d, !d.playing, o); sched[i].upTo = Math.floor(d.clock) - 1; coachTick(); break;
+        case 'sync': if (E.syncDeck(d, o)) { sched[i].upTo = Math.floor(d.clock); coachTick(); } break;
+        case 'cue': if (cueHeld) { cueHeld = false; break; } E.cueJump(d); sched[i].upTo = Math.floor(d.clock) - 1; if (!cueTold) { cueTold = true; toast('Cue jumps back to the cue point. Hold Cue to set a new one.'); } break;
+        case 'loop': E.setLoop(d, !d.loop ? 4 : d.loop.len === 4 ? 8 : 0); break;
+        case 'slower': E.nudgeBpm(d, -0.5); break;
+        case 'faster': E.nudgeBpm(d, 0.5); break;
+        case 'load': openLibrary(i); break;
+      }
+      paintDecks(true);
+    });
+    var cue = n.querySelector('[data-a=cue]'), cueT = 0;
+    cue.addEventListener('pointerdown', function () { clearTimeout(cueT); cueT = setTimeout(function () { var d = currentDecks()[i]; E.setCue(d); cueHeld = true; cueTold = true; toast('Cue set: bar ' + (Math.floor(d.cue / 16) + 1) + ', beat ' + (Math.floor(E.mod(d.cue, 16) / 4) + 1) + '.'); buzz(20); }, 550); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { cue.addEventListener(ev, function () { clearTimeout(cueT); }); });
+    // stutter: hold to repeat an eighth, let go on the 1
+    var st = n.querySelector('[data-a=stutter]');
+    function stDown(e) { e.preventDefault(); if (!E.canUse(progress, owned(), 'effect', 'stutter')) { lockedToast('effect', 'stutter'); return; } var d = currentDecks()[i]; if (d.playing) E.setStutter(d, true); st.classList.add('on'); }
+    function stUp() { var d = currentDecks()[i]; if (d.stutter) E.setStutter(d, false); st.classList.remove('on'); }
+    st.addEventListener('pointerdown', stDown); st.addEventListener('pointerup', stUp); st.addEventListener('pointercancel', stUp); st.addEventListener('pointerleave', stUp);
+    // the filter springs back to the middle when you let go: that is when a drop lands
+    var f = n.querySelector('[data-a=filter]');
+    f.addEventListener('input', function () { var v = +f.value / 100; if (gig) E.setFilter(gig, i, v); else currentDecks()[i].filter = v; });
+    function release() { f.value = 0; if (gig) E.setFilter(gig, i, 0); else currentDecks()[i].filter = 0; }
+    f.addEventListener('pointerup', release); f.addEventListener('pointercancel', release); f.addEventListener('touchend', release); f.addEventListener('change', release);
+  }
+  function paintDecks(force) {
+    var ds = currentDecks();
+    for (var i = 0; i < 2; i++) {
+      var d = ds[i], de = deckEls[i]; if (!de) return;
+      var key = (d.track ? d.track.name + d.track.kit : '') + '|' + d.bpm + '|' + d.playing + '|' + (d.loop ? d.loop.len : 0);
+      if (force || key !== de.lastKey) {
+        de.lastKey = key;
+        de.name.textContent = (i ? 'B \u00b7 ' : 'A \u00b7 ') + (d.track ? d.track.name : 'empty');
+        de.meta.textContent = d.track ? (E.kitById(d.track.kit).name + (d.track.own ? ' · yours' : '') + (d.track.bars > 1 ? ' · ' + d.track.bars + ' bars' : '')) : '';
+        de.bpm.textContent = (Math.round(d.bpm * 10) / 10);
+        de.play.textContent = d.playing ? 'Pause' : 'Play'; de.play.classList.toggle('on', d.playing);
+        de.loop.textContent = d.loop ? 'Loop ' + (d.loop.len / 4) + (d.loop.len === 4 ? ' beat' : ' beats') : 'Loop';
+        de.loop.classList.toggle('on', !!d.loop);
+        var stOpen = E.canUse(progress, owned(), 'effect', 'stutter');
+        de.stutter.classList.toggle('locked', !stOpen); de.stutter.innerHTML = (stOpen ? '' : '<span class="lock"></span>') + 'Stutter';
+      }
+      var o = ds[1 - i];
+      de.sync.classList.toggle('ok', d.playing && o.playing && E.inSync(d, o));
+      var bp = d.playing && d.track ? Math.floor(E.deckBarPos(d)) : -1;
+      if (bp !== de.lastBeat) {
+        if (de.lastBeat >= 0) de.beats[de.lastBeat].classList.remove('ph');
+        if (bp >= 0) de.beats[bp].classList.add('ph');
+        de.lastBeat = bp;
+      }
+      var r = 'Filter: hold & drag', hot = false;
+      if (gig && d.playing && E.tense(gig, i)) { hot = true; r = gig.build[i] >= E.BUILD_BEATS ? 'Let go on the 1!' : 'Building…'; }
+      if (de.ready.textContent !== r) { de.ready.textContent = r; de.ready.classList.toggle('hot', hot); }
+    }
+    if (gig) paintHud();
+  }
+  function renderFx() {
+    var echoOpen = E.canUse(progress, owned(), 'effect', 'echo'), riserOpen = E.canUse(progress, owned(), 'effect', 'riser');
+    var echoOn = gig ? gig.echo : practice.echo;
+    $('fxEcho').innerHTML = (echoOpen ? '' : '<span class="lock"></span>') + 'Echo'; $('fxEcho').classList.toggle('on', echoOn); $('fxEcho').classList.toggle('locked', !echoOpen);
+    $('fxRiser').innerHTML = (riserOpen ? '' : '<span class="lock"></span>') + 'Riser'; $('fxRiser').classList.toggle('locked', !riserOpen);
+    $('fxRiser').classList.toggle('on', !!(gig && gig.riser) || !!riserNode);
+    $('btnRec').hidden = !recSupported();
+  }
+  function renderDecks() {
+    $('gigHud').hidden = !gig; $('practice').hidden = !!gig;
+    $('xf').value = Math.round(xfValue() * 1000);
+    renderFx(); paintDecks(true);
+    if (gig) renderGoals();
+  }
+
+  // ---------- library sheet ----------
+  function openLibrary(i) {
+    var b = $('library').firstElementChild, html = '<h2>Load Deck ' + (i ? 'B' : 'A') + '</h2><h3>Your beats</h3><div class="list">';
+    ownTracks().forEach(function (t) { html += '<button data-ref="' + t.ref + '"><span>' + esc(t.name) + '</span><span class="tiny muted">' + t.bpm + ' BPM</span></button>'; });
+    html += '</div><h3>Groove packs</h3><div class="list">';
+    E.library(progress, owned(), []).forEach(function (t) {
+      var open = refUsable(t.ref);
+      html += '<button data-ref="' + t.ref + '"' + (open ? '' : ' class="locked"') + '><span>' + (open ? '' : '<span class="lock"></span>') + esc(t.name) + ' <span class="tiny muted">' + esc(E.kitById(t.kit).name) + '</span></span><span class="tiny muted">' + t.bpm + ' BPM</span></button>';
+    });
+    html += '</div><div class="actions"><button data-ref="">Close</button></div>';
+    b.innerHTML = html;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      var ref = a.dataset.ref;
+      if (!ref) { hideSheet('library'); return; }
+      if (!refUsable(ref)) { var p = E.packById(ref.slice(5)); hideSheet('library'); lockedToast('kit', p.kit); return; }
+      loadInto(i, ref); hideSheet('library');
+    };
+    showSheet('library');
+  }
+  function loadInto(i, ref) {
+    var t = trackFromRef(ref); if (!t) return;
+    var d = currentDecks()[i], wasPlaying = d.playing;
+    E.loadDeck(d, t); d.playing = false;
+    if (wasPlaying) E.setPlaying(d, true, currentDecks()[1 - i]);
+    sched[i].upTo = Math.floor(d.clock) - 1;
+    toast('Deck ' + (i ? 'B' : 'A') + ': ' + t.name);
+    paintDecks(true);
+  }
+
+  // ---------- gigs ----------
+  function renderGigs() {
+    var html = '';
+    E.VENUES.forEach(function (v, i) {
+      var open = E.venueOpen(progress, owned(), i), why = E.venueLockReason(progress, owned(), i);
+      var rw = E.REWARDS[i].items.map(function (it) { return '<span class="reward">' + esc(itemName(it)) + '</span>'; }).join('');
+      var status = open ? '<span class="stars">' + starStr(progress.stars[i]) + '</span>' : (why === 'unlock' && (i === 0 || E.venueCleared(progress, i - 1)) ? '<span class="tiny"><span class="lock"></span>Full game</span>' : '<span class="tiny muted"><span class="lock"></span>Clear ' + esc(E.VENUES[i - 1].name) + '</span>');
+      html += '<button class="venue card' + (open ? '' : ' lockd') + '" data-v="' + i + '"><span class="ic">' + icon(v.icon) + '</span><span><span class="t">' + esc(v.name) + '</span><br><span class="s">' + esc(v.crowd) + '</span><br>' + rw + '</span>' + status + '</button>';
+    });
+    $('venues').innerHTML = html;
+  }
+  function openVenue(i) {
+    var v = E.VENUES[i];
+    if (!E.venueOpen(progress, owned(), i)) {
+      if (E.venueLockReason(progress, owned(), i) === 'unlock' && (i === 0 || E.venueCleared(progress, i - 1))) openUnlock();
+      else toast('Clear ' + E.VENUES[i - 1].name + ' first.');
+      return;
+    }
+    var b = $('venueSheet').firstElementChild, met = progress.goalsMet[i];
+    var html = '<h2>' + esc(v.name) + '</h2><p class="muted">' + esc(v.crowd) + '</p>' +
+      '<div class="tiny muted">' + v.secs + ' second set · likes ' + v.bpm[0] + ' to ' + v.bpm[1] + ' BPM · the crowd needs ' + v.pass + '% on average</div><h3>Stars</h3>';
+    v.goals.forEach(function (g, k) { html += '<div class="goal-line"><span class="' + (met.indexOf(k) >= 0 ? 'ok' : 'no') + '">★</span><span>' + esc(g.text) + '</span></div>'; });
+    if (v.goals.some(function (g) { return g.type === 'own'; })) html += '<p class="tiny">Bring a beat you made: during the set tap Load on a deck and pick it from Your beats.</p>';
+    if (v.goals.some(function (g) { return g.type === 'kit'; })) html += '<p class="tiny">Its groove packs are already on the decks.</p>';
+    html += '<div class="actions"><button data-a="close">Not yet</button><button data-a="go" class="primary">Start the set</button></div>';
+    b.innerHTML = html;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      hideSheet('venueSheet');
+      if (a.dataset.a === 'go') startGig(i);
+    };
+    showSheet('venueSheet');
+  }
+  var countT = 0;
+  function startGig(i, restored) {
+    if (!ensureAudio()) { toast('Sound is not available on this device.'); return; }
+    stopLab(); stopDecks(); riserStop();
+    if (restored) { gig = restored; gigState = 'paused'; }
+    else {
+      gig = E.createGig(i, (Date.now() & 0x7fffffff));
+      var v = E.VENUES[i];
+      E.loadDeck(gig.decks[0], trackFromRef(v.decks[0]));
+      E.loadDeck(gig.decks[1], trackFromRef(v.decks[1]));
+      // the set opens with Deck A already playing after a count-in
+      gigState = 'count'; countT = 3;
+      E.setPlaying(gig.decks[0], true, null);
+    }
+    sched = [{ upTo: Math.floor(gig.decks[0].clock) - 1 }, { upTo: Math.floor(gig.decks[1].clock) - 1 }];
+    resumeRun = null;
+    lastT = ctx.currentTime;
+    setTab('Decks');
+    $('gigName').textContent = E.VENUES[gig.venue].name;
+    renderDecks(); save();
+    if (gigState === 'count') countIn();
+    else showSheet('pause');
+  }
+  function countIn() {
+    flash(String(countT));
+    if (countT <= 0) { gigState = 'live'; lastT = ctx.currentTime; flash('GO'); coachTick(); return; }
+    countT--; setTimeout(countIn, 700);
+  }
+  function renderGoals() {
+    var v = E.VENUES[gig.venue], html = '', met = E.goalsMet(gig);
+    for (var k = 0; k < 3; k++) {
+      var p = E.goalProgress(gig, k), g = v.goals[k];
+      var prog = g.type === 'noclash' ? (gig.clashes ? 'missed' : 'so far so good') : (Math.min(p.have, p.need) + '/' + p.need + (g.type === 'energy' || g.type === 'own' || g.type === 'kit' ? 's' : g.type === 'peak' ? '%' : ''));
+      html += '<li class="' + (met[k] ? 'met' : '') + '"><span>' + (met[k] ? '\u2713 ' : '') + esc(g.text) + '</span><span>' + prog + '</span></li>';
+    }
+    $('goals').innerHTML = html;
+  }
+  var hudT = 0;
+  function paintHud() {
+    var e = Math.round(gig.energy);
+    $('crowd').firstElementChild.style.width = e + '%';
+    $('crowd').lastElementChild.style.left = E.VENUES[gig.venue].pass + '%';
+    $('crowdVal').textContent = e + '%';
+    $('crowdNeed').textContent = 'Average so far ' + E.crowdRating(gig) + '% (needs ' + E.VENUES[gig.venue].pass + ')';
+    var left = Math.max(0, Math.ceil(gig.secs - gig.t));
+    $('gigTime').textContent = Math.floor(left / 60) + ':' + ('0' + left % 60).slice(-2);
+    if (++hudT % 10 === 0) { renderGoals(); coachTick(); }
+    if (hudT % 120 === 0) save();
+  }
+  // the first gig teaches one move at a time
+  var COACH = [
+    'Deck A is live. On Deck B press Sync, then Play.',
+    'Now slide the crossfader all the way over to B.',
+    'Clean blend! Hold B’s filter hard to one side and keep holding…',
+    '…and let go right on the 1 (the gold light).',
+    'That’s the set. Keep the crowd up: blend, drop, repeat.'
+  ];
+  function coachTick() {
+    if (!gig) return;
+    var c = $('coach');
+    if (gig.coach < 0) { c.textContent = ''; return; }
+    var d = gig.decks;
+    if (gig.coach === 0 && d[1].playing && E.inSync(d[0], d[1])) gig.coach = 1;
+    if (gig.coach <= 1 && gig.blends > 0) gig.coach = 2;
+    if (gig.coach === 2 && (gig.build[0] >= E.BUILD_BEATS || gig.build[1] >= E.BUILD_BEATS)) gig.coach = 3;
+    if (gig.coach <= 3 && gig.drops > 0) gig.coach = 4;
+    c.textContent = COACH[gig.coach] || '';
+  }
+  function onGigEvent(ev) {
+    switch (ev.type) {
+      case 'drop': flash('DROP!'); sfx('drop'); confetti(14); buzz(40); break;
+      case 'miss-drop': flash('Early!', 1); break;
+      case 'blend': flash('Clean blend'); sfx('blend'); break;
+      case 'rough-blend': flash('Rough blend', 1); break;
+      case 'clash': flash('Clash! Hit Sync', 1); sfx('clash'); buzz(80); break;
+      case 'echo': flash('Echo throw'); break;
+      case 'goal': sfx('goal'); renderGoals(); toast('★ ' + E.VENUES[gig.venue].goals[ev.goal].text); break;
+      case 'end': endGig(); break;
+    }
+    coachTick();
+  }
+  function endGig() {
+    gigState = 'over';
+    riserStop();
+    var res = E.gigResult(gig, progress, owned());
+    var before = E.rankIndex(progress);
+    E.applyResult(progress, res);
+    progress.coachDone = true;
+    var promoted = E.rankIndex(progress) > before;
+    var vi = gig.venue;
+    gig.decks[0].playing = false; gig.decks[1].playing = false;
+    gig = null; save();
+    showResults(res, promoted);
+    renderHeader();
+  }
+  function showResults(res, promoted) {
+    var v = E.VENUES[res.venue], b = $('results').firstElementChild;
+    var html = '<h2>' + esc(v.name) + (res.pass ? (res.rating >= res.need + 12 ? ': the crowd loved it' : ': you held the room') : ': not quite') + '</h2>' +
+      '<div class="row"><span class="big-num">' + res.rating + '%</span><span class="muted grow">crowd rating<br>needed ' + res.need + '%</span><span class="stars" style="font-size:28px">' + starStr(res.pass ? res.stars : 0) + '</span></div>';
+    v.goals.forEach(function (g, k) { html += '<div class="goal-line"><span class="' + (res.met[k] ? 'ok' : 'no') + '">' + (res.met[k] ? '★' : '☆') + '</span><span>' + esc(g.text) + '</span></div>'; });
+    if (!res.pass && res.met.some(Boolean)) html += '<p class="tiny muted">Stars count once you pass the gig.</p>';
+    html += '<p class="tiny muted">Peak ' + res.peak + '% · ' + res.drops + (res.drops === 1 ? ' drop' : ' drops') + ' \u00b7 ' + res.blends + (res.blends === 1 ? ' blend' : ' blends') + (res.clashes ? ' · ' + res.clashes + ' clashes' : '') + '</p>';
+    if (res.closest && res.pass) html += '<p class="tiny">So close: ' + esc(res.closest.text.toLowerCase()) + (res.closest.short ? ' (' + res.closest.short + ' short)' : '') + '.</p>';
+    if (!res.pass) html += '<p>' + (res.rating >= res.need - 6 ? 'Only ' + (res.need - res.rating) + '% short. ' : '') + 'Keep both decks moving: blend in a fresh track before the crowd gets bored, and land drops on the 1.</p>';
+    if (promoted) html += '<p><b>New rank: ' + esc(E.RANKS[E.rankIndex(progress)]) + '</b></p>';
+    if (res.rewards.length) {
+      html += '<h3>' + (res.rewardsLocked ? 'Earned, ready in the full game' : 'Unlocked') + '</h3><div>' + res.rewards.map(function (r) { return '<span class="reward">' + esc(itemName(r)) + '</span>'; }).join('') + '</div>';
+    }
+    var nextI = res.venue + 1, showGate = res.pass && nextI >= E.FREE_VENUES && nextI < E.VENUES.length && !owned();
+    if (showGate) html += '<p><b>' + esc(E.VENUES[nextI].name) + '</b> is next: ' + esc(E.VENUES[nextI].crowd) + '</p>';
+    html += '<div class="actions"><button data-a="again">Play again</button>' +
+      (showGate ? '<button data-a="unlock" class="primary">Unlock the full game</button>' : (res.pass && nextI < E.VENUES.length ? '<button data-a="next" class="primary">Next: ' + esc(E.VENUES[nextI].name) + '</button>' : '<button data-a="gigs" class="primary">Gigs</button>')) + '</div>';
+    if (res.rewards.some(function (r) { return r.kind === 'kit' || r.kind === 'lane'; }) && !res.rewardsLocked) html += '<div class="actions"><button data-a="lab">Try it in the Lab</button></div>';
+    b.innerHTML = html;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      hideSheet('results');
+      switch (a.dataset.a) {
+        case 'again': startGig(res.venue); break;
+        case 'next': openVenue(nextI); break;
+        case 'unlock': openUnlock(); break;
+        case 'gigs': setTab('Gigs'); break;
+        case 'lab': setTab('Lab'); break;
+      }
+    };
+    showSheet('results');
+    if (res.pass) confetti(res.firstClear ? 40 : 18);
+    setTab('Gigs');
+  }
+
+  // ---------- files: save to the phone, or hand to the share sheet ----------
+  function fileSlug(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'pocket-decks'; }
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.setAttribute('href', url); link.setAttribute('download', name); document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+  function shareFile(blob, name, type, title) {
+    try {
+      var file = new File([blob], name, { type: type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: title }).catch(function () { });
+      else toast('Sharing files is not supported here. Use Save file.');
+    } catch (err) { toast('Sharing is not available here.'); }
+  }
+
+  // ---------- sharing beats: export and import codes ----------
+  // A code only goes where the player sends it: no account, no server, nothing uploaded.
+  function fitImported(p) {
+    if (E.canUse(progress, owned(), 'kit', p.kit)) return '';
+    var name = (E.kitById(p.kit) || {}).name || 'that kit'; p.kit = 'basement'; return name;
+  }
+  function openShare() {
+    var b = $('shareSheet').firstElementChild, saved = lab.slots.filter(Boolean).length;
+    b.innerHTML = '<h2>Share your beats</h2><p class="muted">Turn a beat into a code anyone with Pocket Decks can paste into Import beat. It only goes where you send it.</p><div class="list">' +
+      '<button data-a="beat"><span>This beat: ' + esc(lab.pattern.name) + '</span><span>&rsaquo;</span></button>' +
+      '<button data-a="lab"' + (saved ? '' : ' disabled') + '><span>Your whole Lab: ' + saved + ' saved beat' + (saved === 1 ? '' : 's') + (lab.chain.length ? ' and your track' : '') + '</span><span>&rsaquo;</span></button>' +
+      '</div><div class="actions"><button data-a="close">Close</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a || a.disabled) return;
+      if (a.dataset.a === 'beat') showCode(E.exportBeat(lab.pattern), lab.pattern.name, 'beat');
+      else if (a.dataset.a === 'lab') showCode(E.exportLab(lab.slots, lab.chain), 'my-lab', 'lab');
+      else hideSheet('shareSheet');
+    };
+    showSheet('shareSheet');
+  }
+  function showCode(code, name, kind) {
+    var b = $('shareSheet').firstElementChild, text = (kind === 'lab' ? 'My Pocket Decks Lab' : 'My Pocket Decks beat "' + name + '"') + ': ' + code;
+    b.innerHTML = '<h2>' + (kind === 'lab' ? 'Your Lab as a code' : 'Beat code') + '</h2><textarea id="shareCode" class="code" readonly rows="5" aria-label="Beat code"></textarea>' +
+      '<p class="tiny muted">On the other phone: Lab, Import beat, then paste this or open the file.</p>' +
+      '<div class="actions"><button data-a="copy">Copy code</button><button data-a="file">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+      '<div class="actions"><button data-a="close" class="primary">Done</button></div>';
+    $('shareCode').value = code;
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      if (a.dataset.a === 'copy') copyText(code, $('shareCode'));
+      else if (a.dataset.a === 'file') saveBlob(new Blob([text + '\n'], { type: 'text/plain' }), 'pocket-decks-' + fileSlug(name) + '.txt');
+      else if (a.dataset.a === 'share') navigator.share({ title: 'Pocket Decks beat', text: text }).catch(function () { });
+      else hideSheet('shareSheet');
+    };
+  }
+  function copyText(text, ta) {
+    function fallback() { try { ta.focus(); ta.select(); document.execCommand('copy'); toast('Code copied.'); } catch (e) { toast('Select the code and copy it.'); } }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { toast('Code copied.'); }, fallback);
+    else fallback();
+  }
+  function openImport() {
+    var b = $('importSheet').firstElementChild;
+    b.innerHTML = '<h2>Import a beat</h2><textarea id="importCode" class="code" rows="4" placeholder="Paste a beat code (it starts with PD1)" aria-label="Beat code to import"></textarea>' +
+      '<p id="importMsg" class="tiny" role="status"></p>' +
+      '<div class="actions"><button data-a="file">Open a file</button><button data-a="go" class="primary">Import</button></div>' +
+      '<div class="actions"><button data-a="close" class="ghost">Cancel</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      if (a.dataset.a === 'file') { $('importFile').value = ''; $('importFile').click(); }
+      else if (a.dataset.a === 'go') runImport($('importCode').value);
+      else hideSheet('importSheet');
+    };
+    showSheet('importSheet');
+  }
+  function importFromFile() {
+    var f = $('importFile').files && $('importFile').files[0]; if (!f) return;
+    if (f.size > 200000) { $('importMsg').textContent = E.IMPORT_ERRORS['too-big']; return; }
+    var rd = new FileReader();
+    rd.onload = function () { $('importCode').value = String(rd.result || ''); runImport($('importCode').value); };
+    rd.onerror = function () { $('importMsg').textContent = 'That file could not be read.'; };
+    rd.readAsText(f);
+  }
+  function runImport(text) {
+    var r = E.importCode(text);
+    if (!r.ok) { $('importMsg').textContent = E.IMPORT_ERRORS[r.error] || E.IMPORT_ERRORS.damaged; return; }
+    if (r.kind === 'beat') {
+      var swapped = fitImported(r.pattern);
+      lab.pattern = r.pattern; if (labPlay.on && !labPlay.chain) labPlay.track = labTrack();
+      hideSheet('importSheet'); setTab('Lab'); renderLab(); saveSoon();
+      toast('Opened "' + r.pattern.name + '". Save it to a slot to keep it.' + (swapped ? ' ' + swapped + ' is in the full game, so it plays on Basement.' : ''));
+      return;
+    }
+    var n = r.slots.filter(Boolean).length, free = lab.slots.filter(function (x) { return !x; }).length, b = $('importSheet').firstElementChild;
+    b.innerHTML = '<h2>A whole Lab: ' + n + ' beat' + (n === 1 ? '' : 's') + '</h2><p class="muted">Replace your saved beats' + (r.chain.length ? ' and track' : '') + ' with these, or add them to your empty slots (' + free + ' free). The beat open in the Lab stays as it is.</p>' +
+      '<div class="actions"><button data-a="add"' + (free ? '' : ' disabled') + '>Add to empty slots</button><button data-a="replace" class="primary">Replace my slots</button></div>' +
+      '<div class="actions"><button data-a="close" class="ghost">Cancel</button></div>';
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a || a.disabled) return;
+      var swapped = '';
+      r.slots.forEach(function (p) { if (p) swapped = fitImported(p) || swapped; });
+      if (a.dataset.a === 'replace') {
+        lab.slots = r.slots.slice(); lab.chain = r.chain.slice(); toast('Imported ' + n + ' beat' + (n === 1 ? '' : 's') + '.' + (swapped ? ' Full-game kits play on Basement.' : ''));
+      } else if (a.dataset.a === 'add') {
+        var added = 0;
+        r.slots.forEach(function (p) { if (!p) return; var at = lab.slots.indexOf(null); if (at < 0) return; lab.slots[at] = p; added++; });
+        toast('Added ' + added + ' of ' + n + ' beats to your slots.' + (added < n ? ' The rest did not fit.' : ''));
+      } else { hideSheet('importSheet'); return; }
+      hideSheet('importSheet'); setTab('Lab'); renderLab(); saveSoon();
+    };
+  }
+
+  // ---------- your sets: recordings kept on this phone (IndexedDB), never uploaded ----------
+  var recDB = null, recDBState = 'unknown', recList = [];
+  function openRecDB(cb) {
+    if (recDB) return cb(recDB);
+    if (recDBState === 'none' || !window.indexedDB) { recDBState = 'none'; return cb(null); }
+    var rq;
+    try { rq = window.indexedDB.open('pocketdecks', 1); } catch (e) { recDBState = 'none'; return cb(null); }
+    rq.onupgradeneeded = function () { var db = rq.result; if (!db.objectStoreNames.contains('recordings')) db.createObjectStore('recordings', { keyPath: 'id' }); };
+    rq.onsuccess = function () { recDB = rq.result; recDBState = 'ok'; cb(recDB); };
+    rq.onerror = rq.onblocked = function () { recDBState = 'none'; cb(null); };
+  }
+  function recStore(mode) { return recDB.transaction('recordings', mode).objectStore('recordings'); }
+  function loadRecList(cb) {
+    openRecDB(function (db) {
+      if (!db) return cb(recList = []);
+      var out = [], rq;
+      try { rq = recStore('readonly').openCursor(); } catch (e) { return cb(recList); }
+      rq.onsuccess = function () {
+        var c = rq.result;
+        if (c) { var v = c.value; out.push({ id: v.id, name: v.name, created: v.created, secs: v.secs, type: v.type, size: v.size }); c.continue(); }
+        else cb(recList = out);
+      };
+      rq.onerror = function () { cb(recList); };
+    });
+  }
+  function recPut(item, cb) {
+    try { var tx = recDB.transaction('recordings', 'readwrite'); tx.objectStore('recordings').put(item); tx.oncomplete = function () { cb(true); }; tx.onerror = tx.onabort = function (e) { if (e && e.preventDefault) e.preventDefault(); cb(false); }; }
+    catch (e) { cb(false); }
+  }
+  function recGet(id, cb) {
+    try { var rq = recStore('readonly').get(id); rq.onsuccess = function () { cb(rq.result || null); }; rq.onerror = function () { cb(null); }; } catch (e) { cb(null); }
+  }
+  function recDelete(id, cb) {
+    try { var tx = recDB.transaction('recordings', 'readwrite'); tx.objectStore('recordings').delete(id); tx.oncomplete = function () { recList = E.recRemove(recList, id); cb(true); }; tx.onerror = function () { cb(false); }; }
+    catch (e) { cb(false); }
+  }
+  function recRenameStored(id, name, cb) {
+    recGet(id, function (v) {
+      if (!v) return cb(false);
+      v.name = E.recName(name, v.name);
+      recPut(v, function (ok) { if (ok) recList = E.recRename(recList, id, v.name); cb(ok); });
+    });
+  }
+  function fmtSecs(s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function recExt(type) { return /ogg/.test(type) ? 'ogg' : /mp4|aac/.test(type) ? 'm4a' : 'webm'; }
+  function usageLine() { var u = E.recUsage(recList); return u.count + ' of ' + E.REC_MAX_COUNT + ' sets, ' + E.fmtBytes(u.bytes) + ' of ' + E.fmtBytes(E.REC_MAX_BYTES) + ' used.'; }
+
+  // ---------- recording a set ----------
+  var rec = null;
+  function recSupported() { return typeof window.MediaRecorder === 'function' && !!(window.AudioContext || window.webkitAudioContext); }
+  function toggleRec() {
+    if (!ensureAudio()) return;
+    if (rec) { rec.mr.stop(); return; }
+    if (!recDest) { recDest = ctx.createMediaStreamDestination(); outNode.connect(recDest); }
+    var chunks = [], mr;
+    try { mr = new MediaRecorder(recDest.stream); } catch (e) { toast('Recording is not available here.'); return; }
+    mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = function () {
+      var type = mr.mimeType || 'audio/webm', blob = new Blob(chunks, { type: type }), secs = Math.max(1, Math.round((Date.now() - rec.t0) / 1000)), where = rec.venue;
+      rec = null; $('btnRec').classList.remove('on'); $('btnRec').textContent = 'Rec';
+      keepRecording(blob, type, secs, where);
+    };
+    rec = { mr: mr, t0: Date.now(), venue: gig ? E.VENUES[gig.venue].name : null }; mr.start(1000);
+    $('btnRec').classList.add('on'); $('btnRec').textContent = 'Stop rec';
+    toast('Recording your set. Tap again to stop.');
+  }
+  // every set is kept in Your sets when there is room; when there is not, the player can still save or share it
+  function keepRecording(blob, type, secs, venueName) {
+    loadRecList(function (list) {
+      var item = { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), name: E.recDefaultName(list, venueName), created: Date.now(), secs: secs, type: type, size: blob.size };
+      if (recDBState !== 'ok') return showRecording(blob, item, 'nodb');
+      var room = E.recRoom(list, blob.size);
+      if (!room.ok) return showRecording(blob, item, room.reason);
+      recPut(Object.assign({ blob: blob }, item), function (ok) {
+        if (ok) recList = list.concat([item]);
+        showRecording(blob, item, ok ? 'saved' : 'failed');
+      });
+    });
+  }
+  var REC_STATE = {
+    saved: '',
+    count: 'Your sets is full (' + E.REC_MAX_COUNT + ' sets). Delete one in Your sets to keep this one here, or save it as a file now.',
+    bytes: 'Your sets is full (' + E.fmtBytes(E.REC_MAX_BYTES) + '). Delete a set in Your sets to make room, or save this one as a file now.',
+    'too-long': 'This set is too long to keep in the app. Save it as a file or share it.',
+    nodb: 'This phone cannot keep sets inside the app. Save it as a file or share it.',
+    failed: 'Your phone ran out of room to keep this set. Save it as a file or share it.'
+  };
+  function showRecording(blob, item, state) {
+    var url = URL.createObjectURL(blob), b = $('recSheet').firstElementChild, saved = state === 'saved';
+    b.innerHTML = '<h2>Your set</h2>' +
+      (saved ? '<input id="recName" type="text" maxlength="40" aria-label="Set name"><p class="tiny muted">' + fmtSecs(item.secs) + ', kept in Your sets. ' + usageLine() + '</p>'
+        : '<p class="muted">' + fmtSecs(item.secs) + ' recorded.</p><p class="tiny warn">' + REC_STATE[state] + '</p>') +
+      '<audio controls style="width:100%"></audio>' +
+      '<div class="actions"><button data-a="save">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+      '<div class="actions"><button data-a="sets">Your sets</button><button data-a="close" class="primary">Done</button></div>';
+    b.querySelector('audio').setAttribute('src', url);
+    if (saved) { $('recName').value = item.name; $('recName').onchange = function () { var v = $('recName').value; recRenameStored(item.id, v, function (ok) { if (ok) { item.name = E.recName(v, item.name); toast('Renamed.'); } }); }; }
+    function fname() { return fileSlug(saved ? E.recName($('recName').value, item.name) : item.name) + '.' + recExt(item.type); }
+    b.onclick = function (e) {
+      var a = e.target.closest('button'); if (!a) return;
+      if (a.dataset.a === 'save') saveBlob(blob, fname());
+      else if (a.dataset.a === 'share') shareFile(blob, fname(), item.type, 'My Pocket Decks set');
+      else { if (saved && $('recName').value !== item.name) $('recName').onchange(); b.querySelector('audio').pause(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); hideSheet('recSheet'); if (a.dataset.a === 'sets') openSets(); }
+    };
+    showSheet('recSheet');
+  }
+  var setsURL = null;
+  function closeSetsAudio() { var au = $('setsSheet').querySelector('audio'); if (au) au.pause(); if (setsURL) { URL.revokeObjectURL(setsURL); setsURL = null; } }
+  function openSets() {
+    loadRecList(function (list) {
+      closeSetsAudio();
+      var b = $('setsSheet').firstElementChild, html = '<h2>Your sets</h2>';
+      if (recDBState !== 'ok') html += '<p class="muted">This phone cannot keep sets inside the app. When you record, save or share each set as a file.</p>';
+      else if (!list.length) html += '<p class="muted">No sets yet. Tap Rec on the Decks while you play and your sets are kept here.</p>';
+      else {
+        html += '<p class="tiny muted">' + usageLine() + ' Sets stay on this phone.</p><div class="list">';
+        E.recSorted(list).forEach(function (r) {
+          html += '<button data-id="' + esc(r.id) + '"><span><b>' + esc(r.name) + '</b><br><span class="tiny muted">' + fmtSecs(r.secs || 0) + ', ' + esc(new Date(r.created || 0).toLocaleDateString()) + ', ' + E.fmtBytes(r.size || 0) + '</span></span><span>&rsaquo;</span></button>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="actions"><button data-a="close" class="primary">Done</button></div>';
+      b.innerHTML = html;
+      b.onclick = function (e) {
+        var a = e.target.closest('button'); if (!a) return;
+        if (a.dataset.id) openSet(a.dataset.id);
+        else { closeSetsAudio(); hideSheet('setsSheet'); }
+      };
+      showSheet('setsSheet');
+    });
+  }
+  function openSet(id) {
+    recGet(id, function (v) {
+      if (!v || !v.blob) { toast('That set could not be opened.'); return openSets(); }
+      closeSetsAudio();
+      var b = $('setsSheet').firstElementChild, sure = false;
+      setsURL = URL.createObjectURL(v.blob);
+      b.innerHTML = '<h2>' + esc(v.name) + '</h2><input id="setName" type="text" maxlength="40" aria-label="Set name">' +
+        '<p class="tiny muted">' + fmtSecs(v.secs || 0) + ', recorded ' + esc(new Date(v.created || 0).toLocaleString()) + ', ' + E.fmtBytes(v.size || 0) + '</p>' +
+        '<audio controls style="width:100%"></audio>' +
+        '<div class="actions"><button data-a="save">Save file</button>' + (navigator.share ? '<button data-a="share">Share</button>' : '') + '</div>' +
+        '<div class="actions"><button data-a="del" class="ghost">Delete</button><button data-a="back" class="primary">Back to your sets</button></div>';
+      $('setName').value = v.name;
+      b.querySelector('audio').setAttribute('src', setsURL);
+      function rename(after) {
+        var nv = E.recName($('setName').value, v.name);
+        if (nv === v.name) return after && after();
+        recRenameStored(id, nv, function (ok) { if (ok) { v.name = nv; b.querySelector('h2').textContent = nv; toast('Renamed.'); } if (after) after(); });
+      }
+      $('setName').onchange = function () { rename(); };
+      function fname() { return fileSlug(E.recName($('setName').value, v.name)) + '.' + recExt(v.type); }
+      b.onclick = function (e) {
+        var a = e.target.closest('button'); if (!a) return;
+        if (a.dataset.a === 'save') saveBlob(v.blob, fname());
+        else if (a.dataset.a === 'share') shareFile(v.blob, fname(), v.type, 'My Pocket Decks set');
+        else if (a.dataset.a === 'del') {
+          if (!sure) { sure = true; a.textContent = 'Tap again to delete'; a.classList.add('danger'); return; }
+          recDelete(id, function (ok) { toast(ok ? 'Deleted "' + v.name + '".' : 'That set could not be deleted.'); openSets(); });
+        } else rename(openSets);
+      };
+    });
+  }
+
+  // ---------- sheets, toast, flash ----------
+  function showSheet(id) { $(id).hidden = false; }
+  function hideSheet(id) { $(id).hidden = true; }
+  var toastT = 0;
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 2600); }
+  function flash(msg, warn) {
+    var f = $('flash'); f.textContent = msg; f.style.color = warn ? 'var(--bad)' : 'var(--text)';
+    f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');
+    if (settings.reduce) { f.style.opacity = 1; setTimeout(function () { f.style.opacity = ''; }, 700); }
+  }
+  function confetti(n) {
+    if (settings.reduce) return;
+    var box = el('div', 'confetti'), cols = ['var(--acc)', 'var(--acc2)', 'var(--gold)', 'var(--a)', 'var(--b)'];
+    for (var i = 0; i < n; i++) { var c = el('i'); c.style.left = (Math.random() * 100) + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = (Math.random() * 0.5) + 's'; box.appendChild(c); }
+    document.body.appendChild(box); setTimeout(function () { box.remove(); }, 3000);
+  }
+  function buzz(ms) { if (!settings.reduce && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { } }
+
+  // ---------- unlock sheet ----------
+  function openUnlock() { renderUnlock(); showSheet('unlock'); }
+  function renderUnlock() {
+    var st = billing.state;
+    $('unlockWeb').hidden = st.available;
+    $('btnBuy').hidden = !st.available || owned();
+    $('btnRestore').hidden = !st.available;
+    $('btnBuy').textContent = st.busy ? 'Waiting for Google Play…' : 'Unlock' + (st.price ? ' for ' + st.price : '');
+    $('btnBuy').disabled = st.busy;
+    var msg = owned() ? 'Unlocked. Thank you!' : st.pending ? 'Your purchase is pending. It unlocks when Google Play confirms it.' : st.error ? st.error : '';
+    $('unlockStatus').textContent = msg;
+  }
+  billing.onChange(function () { renderUnlock(); renderAll(); });
+
+  // ---------- tabs ----------
+  function setTab(name) {
+    mode = name.toLowerCase();
+    ['Home', 'Lab', 'Decks', 'Gigs'].forEach(function (t) { $('view' + t).hidden = t !== name; });
+    var bs = document.querySelectorAll('#tabs button');
+    for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', bs[i].dataset.tab === name);
+    if (name === 'Lab') renderLab();
+    if (name === 'Decks') { if (!gig && labPlay.on) stopLab(); renderDecks(); }
+    document.body.classList.toggle('live', !!gig && name === 'Decks');
+    if (name === 'Gigs') renderGigs();
+    if (name === 'Home') renderHome();
+    lastPaintStep = -2;
+  }
+  function renderAll() {
+    renderHeader();
+    if (mode === 'lab') renderLab(); else if (mode === 'decks') renderDecks(); else if (mode === 'gigs') renderGigs(); else renderHome();
+  }
+
+  // ================= wiring =================
+  function wire() {
+    $('btnStart').onclick = function () {
+      if (!ensureAudio()) { toast('Sound is not available on this device.'); setTab('Lab'); return; }
+      setTab('Lab'); startLab(false);
+      toast('That’s your groove. Tap the pads to change it.');
+    };
+    $('btnResume').onclick = function () { if (resumeRun) startGig(resumeRun.venue, resumeRun); };
+    $('tabs').onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (gig && b.dataset.tab !== 'Decks') { toast('Finish or leave the set first (pause).'); return; }
+      setTab(b.dataset.tab);
+    };
+    $('venueMap').onclick = function (e) { var b = e.target.closest('.vn'); if (!b) return; if (gig) return; setTab('Gigs'); openVenue(+b.dataset.v); };
+    $('venues').onclick = function (e) { var b = e.target.closest('.venue'); if (b) openVenue(+b.dataset.v); };
+    $('btnSettings').onclick = function () { renderSettings(); showSheet('settings'); if (gig && gigState === 'live') pauseGig(true); };
+    // lab
+    $('labPlay').onclick = function () { if (labPlay.on) stopLab(); else startLab(false); };
+    $('chainPlay').onclick = function () {
+      if (labPlay.on && labPlay.chain) { stopLab(); return; }
+      if (!lab.chain.length) { toast('Save beats to slots, then add them to your track.'); return; }
+      startLab(true);
+    };
+    $('labSlower').onclick = function () { lab.pattern.bpm = E.clamp(lab.pattern.bpm - 2, 70, 160); renderLabTransport(); saveSoon(); };
+    $('labFaster').onclick = function () { lab.pattern.bpm = E.clamp(lab.pattern.bpm + 2, 70, 160); renderLabTransport(); saveSoon(); };
+    $('labSwing').oninput = function () { lab.pattern.swing = +$('labSwing').value / 100; $('labSwingVal').textContent = $('labSwing').value + '%'; saveSoon(); };
+    $('kits').onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var id = b.dataset.kit;
+      if (!E.canUse(progress, owned(), 'kit', id)) { lockedToast('kit', id); return; }
+      lab.pattern.kit = id; if (labPlay.on && !labPlay.chain) labPlay.track = labTrack();
+      setHue(); renderKits(); renderPads(); saveSoon();
+      if (ensureAudio() && !labPlay.on) { var t = ctx.currentTime + 0.02; voice(id, 'kick', 1, t, labBus); voice(id, 'snare', 1, t + 0.25, labBus); voice(id, 'bass', 1, t + 0.5, labBus); }
+    };
+    $('overview').onclick = function (e) {
+      var c = e.target.closest('[data-lane]'); if (!c) return;
+      if (c.classList.contains('c')) tapStep(c.dataset.lane, +c.dataset.s); else selectLane(c.dataset.lane);
+    };
+    $('laneChips').onclick = function (e) { var b = e.target.closest('button'); if (b) selectLane(b.dataset.lane); };
+    $('pads').addEventListener('pointerdown', function (e) { var b = e.target.closest('.pad'); if (!b) return; e.preventDefault(); tapStep(lab.lane, +b.dataset.s); });
+    $('pads').addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('pad')) { e.preventDefault(); tapStep(lab.lane, +e.target.dataset.s); } });
+    $('notePen').onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      lab.pen = +b.dataset.n; renderPads();
+      if (ensureAudio()) voice(lab.pattern.kit, lab.lane, lab.pen, ctx.currentTime + 0.01, labBus);
+    };
+    $('laneClear').onclick = function () { E.clearLane(lab.pattern, lab.lane); labChanged(); renderOverview(); renderPads(); };
+    $('laneHear').onclick = function () {
+      if (!ensureAudio()) return;
+      var t = ctx.currentTime + 0.02, L = lab.lane, p = lab.pattern, dur = 1 / E.stepsPerSecond(p.bpm);
+      for (var s = 0; s < 16; s++) { var v = p.lanes[L][s]; if (v) voice(p.kit, L, v, t + s * dur + E.swingDelay(s, p.bpm, p.swing), labBus); }
+    };
+    $('labNew').onclick = function () {
+      lab.made++;
+      var kit = E.canUse(progress, owned(), 'kit', lab.pattern.kit) ? lab.pattern.kit : 'basement';
+      lab.pattern = E.emptyPattern(kit, lab.pattern.bpm); lab.pattern.name = 'My beat ' + lab.made;
+      // one kick on the 1 so the new beat is never silent
+      lab.pattern.lanes.kick[0] = 1;
+      if (labPlay.on && !labPlay.chain) labPlay.track = labTrack();
+      renderLab(); saveSoon();
+    };
+    $('beatName').oninput = function () { var v = $('beatName').value.trim(); if (v) { lab.pattern.name = v.slice(0, 24); lab.pattern.own = true; saveSoon(); } };
+    $('slots').onclick = function (e) { var b = e.target.closest('.slot'); if (b) openSlot(+b.dataset.slot); };
+    $('chain').onclick = function (e) { var b = e.target.closest('.link'); if (!b) return; lab.chain.splice(+b.dataset.ci, 1); renderSlots(); saveSoon(); };
+    $('toDeckA').onclick = function () { sendToDeck(0); };
+    $('toDeckB').onclick = function () { sendToDeck(1); };
+    // decks
+    buildDecks();
+    $('xf').addEventListener('input', function () { var x = +$('xf').value / 1000; if (gig) E.setCrossfader(gig, x); else practice.xf = x; });
+    $('fxEcho').onclick = function () {
+      if (!E.canUse(progress, owned(), 'effect', 'echo')) { lockedToast('effect', 'echo'); return; }
+      ensureAudio();
+      if (gig) { var ev = E.setEcho(gig, !gig.echo); ev.forEach(onGigEvent); } else practice.echo = !practice.echo;
+      renderFx();
+    };
+    $('fxRiser').onclick = function () {
+      if (!E.canUse(progress, owned(), 'effect', 'riser')) { lockedToast('effect', 'riser'); return; }
+      ensureAudio();
+      if (riserNode) { riserStop(); if (gig) E.setRiser(gig, false); }
+      else { riserStart(); if (gig) E.setRiser(gig, true); setTimeout(function () { if (riserNode) { riserStop(); if (gig) E.setRiser(gig, false); renderFx(); } }, 8000); }
+      renderFx();
+    };
+    $('btnRec').onclick = toggleRec;
+    $('btnSets').onclick = openSets;
+    $('btnSets2').onclick = function () { hideSheet('settings'); openSets(); };
+    $('btnShareBeat').onclick = openShare;
+    $('btnImport').onclick = openImport;
+    $('importFile').onchange = importFromFile;
+    $('btnPause').onclick = function () { pauseGig(true); };
+    $('btnGo').onclick = function () { hideSheet('pause'); pauseGig(false); };
+    $('btnQuit').onclick = function () {
+      hideSheet('pause'); if (!gig) return;
+      gig.decks[0].playing = false; gig.decks[1].playing = false; gig = null; gigState = 'off'; riserStop(); save(); setTab('Gigs');
+    };
+    // unlock
+    $('btnBuy').onclick = function () { billing.buy(); renderUnlock(); };
+    $('btnRestore').onclick = function () { billing.restore(); renderUnlock(); };
+    $('btnRestore2').onclick = function () { if (!billing.restore()) toast('The full game unlocks in the Google Play edition.'); };
+    $('btnUnlockClose').onclick = function () { hideSheet('unlock'); };
+    $('btnShowUnlock').onclick = function () { hideSheet('settings'); openUnlock(); };
+    // settings
+    $('tSound').onclick = function () { settings.sound = !settings.sound; saveSettings(); applySound(); renderSettings(); };
+    $('tMotion').onclick = function () { settings.reduce = !settings.reduce; saveSettings(); applyBody(); renderSettings(); };
+    $('tBig').onclick = function () { settings.big = !settings.big; saveSettings(); applyBody(); renderSettings(); };
+    $('btnReset').onclick = function () {
+      if ($('btnReset').dataset.sure !== '1') { $('btnReset').dataset.sure = '1'; $('btnReset').textContent = 'Tap again to erase progress and beats'; return; }
+      $('btnReset').dataset.sure = ''; $('btnReset').textContent = 'Reset progress';
+      progress = E.newProgress(); lab.pattern = E.clonePattern(E.packById('starter')); lab.slots = lab.slots.map(function () { return null; }); lab.chain = []; lab.made = 0;
+      gig = null; gigState = 'off'; resumeRun = null; save(); hideSheet('settings'); setTab('Home'); renderAll();
+    };
+    $('btnSettingsClose').onclick = function () { hideSheet('settings'); };
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { var open = document.querySelector('.sheet:not([hidden])'); if (open && open.id !== 'pause') open.hidden = true; else if (gig && gigState === 'live') pauseGig(true); }
+      if (e.key === ' ' && mode === 'lab' && e.target === document.body) { e.preventDefault(); $('labPlay').click(); }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        if (gig && gigState === 'live') pauseGig(true);
+        if (labPlay.on) stopLab();
+        if (!gig) stopDecks();
+        save();
+        if (ctx && ctx.state === 'running' && !rec) ctx.suspend();
+      }
+    });
+    window.addEventListener('pagehide', save);
+  }
+  function sendToDeck(i) {
+    stopLab();
+    setTab('Decks');
+    if (gig) return;
+    loadInto(i, lab.chain.length ? 'chain' : 'lab');
+  }
+  function pauseGig(on) {
+    if (!gig) return;
+    if (on) { if (gigState === 'live' || gigState === 'count') { gigState = 'paused'; riserStop(); E.setRiser(gig, false); if (ctx) ctx.suspend(); save(); } showSheet('pause'); }
+    else {
+      ensureAudio();
+      if (ctx) ctx.resume();
+      gigState = 'live'; lastT = ctx.currentTime;
+      sched = [{ upTo: Math.floor(gig.decks[0].clock) - 1 }, { upTo: Math.floor(gig.decks[1].clock) - 1 }];
+      renderDecks();
+    }
+  }
+  function renderSettings() {
+    $('tSound').textContent = settings.sound ? 'On' : 'Off'; $('tSound').classList.toggle('on', settings.sound);
+    $('tMotion').textContent = settings.reduce ? 'On' : 'Off'; $('tMotion').classList.toggle('on', settings.reduce);
+    $('tBig').textContent = settings.big ? 'On' : 'Off'; $('tBig').classList.toggle('on', settings.big);
+  }
+  function applyBody() { document.body.classList.toggle('reduce', settings.reduce); document.body.classList.toggle('big', settings.big); }
+
+  // ================= start =================
+  applyBody();
+  wire();
+  setTab('Home');
+  renderHeader();
+  billing.start();
+  requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
