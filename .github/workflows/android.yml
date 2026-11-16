@@ -1,0 +1,100 @@
+name: Android
+# The Play edition (android/play): the game, free for its opening stretch,
+# with the rest of the game as one Google Play purchase. Build it,
+# check every class the manifest names is in the dex and every file the page
+# needs is in the assets, then open it on an emulator and fail unless the
+# game's page actually loads. A red run here is a build that must not be
+# uploaded.
+on:
+  push:
+    paths: ['android/**', 'index.html', '*.css', 'js/**', 'icons/**', 'manifest.webmanifest', 'privacy.html', 'tools/check-apk.js', 'tools/launch-test.sh', 'tools/tap-through.js', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'index.html', '*.css', 'js/**', 'icons/**', 'manifest.webmanifest', 'privacy.html', 'tools/check-apk.js', 'tools/launch-test.sh', 'tools/tap-through.js', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: 'gradle'
+      # ubuntu-latest ships an SDK under $ANDROID_HOME; use its sdkmanager
+      # rather than a setup action (the same approach as Elderon's CI).
+      - name: Install the SDK platform and build-tools
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME" -name sdkmanager -type f | sort -V | tail -1)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      # The release build, signed with the debug key here (no upload key in
+      # CI), so it is the same build Play gets apart from the signature.
+      - name: Build the release APK and bundle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :play:assembleRelease :play:bundleRelease :play:assembleDebug --no-daemon
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the APK would load
+        run: node tools/check-apk.js android/play/build/outputs/apk/release/play-release.apk --package com.taugustincst.pocketdecks
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-release-apk
+          path: android/play/build/outputs/apk/release/play-release.apk
+      # The same code as a debuggable build, for the tap-through test (it
+      # reads the page's layout over WebView DevTools, which only a
+      # debuggable build exposes).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-debug-apk
+          path: android/play/build/outputs/apk/debug/play-debug.apk
+
+  launch:
+    name: Open it on Android ${{ matrix.android }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Android 9 as well as 14: minSdk is 24, and a call that only exists on
+    # newer Android once crashed Bubble Pop at launch on older phones while
+    # the Android 14 run passed.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - android: '9'
+            api: 28
+          - android: '14'
+            api: 34
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: play-release-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch on Android ${{ matrix.android }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash tools/launch-test.sh play-release.apk com.taugustincst.pocketdecks
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-test-android-${{ matrix.android }}
+          path: launch-test/
+          if-no-files-found: ignore
+

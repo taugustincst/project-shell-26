@@ -38,7 +38,6 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--acc2); outl
 #rankPips i.on { background: var(--acc); }
 #rankPips i.top { background: #3a3352; outline: 1px dashed var(--gold); }
 #btnSettings { min-width: 44px; padding: 8px; font-size: 18px; }
-#ptBadge { font-size: 14px; color: var(--gold); border: 1px solid var(--gold); border-radius: 8px; padding: 1px 6px; }
 #venueMap { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 2px; }
 #venueMap .vn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; background: none; border: 0; padding: 0; min-height: 0; }
 #venueMap .dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #231e35; border: 2px solid var(--line); }
@@ -208,7 +207,6 @@ button.danger { border-color: var(--bad); color: var(--bad); }
         <div id="rankPips" aria-hidden="true"></div>
         <div id="rankNext">Next: Bedroom Stream</div>
       </div>
-      <span id="ptBadge" hidden>Playtest</span>
       <button id="btnSettings" aria-label="Settings">&#9881;</button>
     </div>
     <div id="venueMap" aria-label="The road to Main Stage"></div>
@@ -1124,7 +1122,7 @@ var Engine = (function () {
   'use strict';
   var E = Engine;
   var GAME = 'pocketdecks';
-  var SAVE_KEY = GAME + '.save', SET_KEY = GAME + '.settings', UNLOCK_KEY = GAME + '.unlock', PLAYTEST_KEY = GAME + '.playtest';
+  var SAVE_KEY = GAME + '.save', SET_KEY = GAME + '.settings', UNLOCK_KEY = GAME + '.unlock';
   var PRODUCT = 'full_unlock';
   function $(id) { return document.getElementById(id); }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -1180,8 +1178,7 @@ var Engine = (function () {
     };
   }
   var billing = createBilling({ storageKey: UNLOCK_KEY, productId: PRODUCT });
-  var playtest = lsGet(GAME + '.playtest') === 'full';   // the one playtest switch (see PLAY.md)
-  function owned() { return playtest || billing.state.owned; }
+  function owned() { return billing.state.owned; }
 
   // ================= settings & save =================
   var settings = { sound: true, reduce: false, big: false };
@@ -1488,7 +1485,6 @@ var Engine = (function () {
       html += '<button class="vn' + (done ? ' done' : '') + (next ? ' next' : '') + (i >= E.FREE_VENUES ? ' paid' : '') + (v.finale ? ' top' : '') + '" data-v="' + i + '" aria-label="' + esc(v.name) + '"><span class="dot">' + icon(v.icon) + '</span><small>' + (progress.stars[i] ? progress.stars[i] + '★' : ' ') + '</small></button>';
     }
     $('venueMap').innerHTML = html;
-    $('ptBadge').hidden = !playtest;
   }
   function itemName(it) {
     if (it.kind === 'kit') return E.kitById(it.id).name + ' kit';

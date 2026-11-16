@@ -28,14 +28,13 @@ In the Play app the page receives `window.AndroidBilling` with `start(productId)
 - `pocketdecks.save`: `{ v: 1, progress, lab, run }`. `progress` holds cleared venues, stars, best ratings. `lab` holds the beat being edited, the eight slots and the track chain. `run` is the gig in progress (saved every couple of seconds, on pause and on page hide) so a reload offers "Resume your gig". The unlock is never in this object.
 - `pocketdecks.settings`: sound, reduce motion, larger text.
 - `pocketdecks.unlock`: `'1'` when Play has confirmed the purchase (cache only).
-- `pocketdecks.playtest`: see below.
 
 - **Your sets (recordings library):** every set the player records is kept in the app, in the page's IndexedDB (database `pocketdecks`, store `recordings`: id, name, date, length, type, size, audio blob). Your sets lists them newest first, and each set can be played, renamed, deleted, saved as a file or shared. Caps: 20 sets and 50 MB in total; when a new set would go over, the game says so and still offers Save file and Share for that set. Reset progress does not delete sets. Nothing is uploaded.
 - **Sharing beats:** in the Lab, Share beat turns the beat being edited, or the whole Lab (8 slots and the track), into a plain-text code (`PD1.<base64url JSON>.<checksum>`). The player copies it, saves it as a `.txt` file or hands it to the share sheet. Import beat takes a pasted code (surrounding text is fine) or opens a `.txt` file, checks the version and checksum, clamps every value like a saved beat, and either opens the beat in the Lab or replaces / fills the slots. A beat on a kit the player has not opened plays on Basement. Codes carry beats only: never progress, the unlock or anything about the player.
 
-## Playtest switch (decide before packaging)
+## Playtest switch (removed at packaging)
 
-`localStorage.setItem('pocketdecks.playtest', 'full')` treats the unlock as owned and shows a small "Playtest" badge in the header. It is the only bypass (no URL flags, nothing in saves). **Owner/Folder decision:** remove it, or keep it, before the Play build.
+The design-time playtest switch (`pocketdecks.playtest`) was **removed for the Play build** (Folder, 2026-11-16 packaging, same as shells 21–25): the localStorage bypass, the header "Playtest" badge and the key constant are gone from `index.html`, `owned()` depends only on Play Billing, and the static test now asserts the switch's absence.
 
 ## Android wrapper notes
 
@@ -54,3 +53,7 @@ In the Play app the page receives `window.AndroidBilling` with `start(productId)
 4. Content rating questionnaire (expected Everyone: no violence, gambling or mature themes; user-made music only, nothing shared from inside the app).
 5. Data safety: no data collected or shared by the app; no network access; beats, sets and progress stay on the device. Players can export beats and sets themselves through the share sheet or a file.
 6. Phone playtest on a real device for audio latency and speaker loudness.
+
+## Play packaging (Folder, 2026-11-16)
+
+Packaged for Google Play mirroring project-shell-05 / shells 23–25: `android/` WebView wrapper (applicationId `com.taugustincst.pocketdecks`, versionName 1.0.0 / versionCode 10000, WebViewAssetLoader offline load, no network permission, PlayBilling bridge per the contract above), `store/` pack (listing.md, icon-512, feature graphic, four real rendered 1080×1920 screenshots: home/title, Beat Lab playing a pattern, the live Bedroom Stream gig, Your sets with a recorded set), `icons/`, `privacy.html`, `site/` store page, `tools/` and the ci/android/release/pages workflows. Upload keystore created and the four `ANDROID_UPLOAD_*` secrets set on the repo; the Release workflow produces the signed bundle once it can run.

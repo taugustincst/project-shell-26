@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pocket Decks</title>
+  <meta name="description" content="Make your own beats, mix live on two decks, climb to the Main Stage.">
+  <meta name="theme-color" content="#12101c">
+  <link rel="icon" href="img/icon-192.png">
+  <meta property="og:title" content="Pocket Decks">
+  <meta property="og:description" content="Make your own beats, mix live on two decks, climb to the Main Stage.">
+  <meta property="og:image" content="img/feature-graphic-1024x500.png">
+  <style>
+    :root { --bg: #12101c; --fg: #f1eefb; --muted: #a9a3c2; --panel: rgba(255,255,255,0.06); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+      font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    .hero img { display: block; width: 100%; height: auto; border-radius: 12px; }
+    header { display: flex; gap: 16px; align-items: center; margin: 24px 0 8px; }
+    header img { width: 72px; height: 72px; border-radius: 16px; }
+    h1 { margin: 0; font-size: 1.8rem; line-height: 1.2; }
+    .short { margin: 4px 0 0; color: var(--muted); }
+    .get { display: inline-block; margin: 20px 0 8px; padding: 12px 22px; border-radius: 999px;
+      background: var(--fg); color: var(--bg); font-weight: 600; text-decoration: none; }
+    .get:focus-visible, .get:hover { outline: 3px solid var(--muted); outline-offset: 2px; }
+    .note { margin: 0 0 24px; color: var(--muted); font-size: 0.9rem; }
+    .shots { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 220px);
+      gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+    figure { margin: 0; scroll-snap-align: start; }
+    figure img { display: block; width: 100%; height: auto; border-radius: 10px; }
+    figcaption { margin-top: 6px; font-size: 0.85rem; color: var(--muted); }
+    .about { margin-top: 28px; padding: 4px 20px; border-radius: 12px; background: var(--panel); }
+    footer { margin-top: 32px; font-size: 0.9rem; color: var(--muted); }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="hero"><img src="img/feature-graphic-1024x500.png" alt="" width="1024" height="500"></div>
+    <header>
+      <img src="img/icon-192.png" alt="" width="72" height="72">
+      <div>
+        <h1>Pocket Decks</h1>
+        <p class="short">Make your own beats, mix live on two decks, climb to the Main Stage.</p>
+      </div>
+    </header>
+    <a class="get" href="https://play.google.com/store/apps/details?id=com.taugustincst.pocketdecks">Get it on Google Play</a>
+    <p class="note">Pocket Decks is played in the Android app.</p>
+    <section class="shots" aria-label="Screenshots">
+        <figure><img src="img/screenshot-01-title.png" alt="From a bedroom stream to the Main Stage" loading="lazy" width="540" height="960"><figcaption>From a bedroom stream to the Main Stage</figcaption></figure>
+        <figure><img src="img/screenshot-02-lab.png" alt="The Beat Lab: 16 steps, eight lanes, every sound made on the phone" loading="lazy" width="540" height="960"><figcaption>The Beat Lab: 16 steps, eight lanes, every sound made on the phone</figcaption></figure>
+        <figure><img src="img/screenshot-03-gig.png" alt="Play the gig: clean blends and drops keep the crowd up" loading="lazy" width="540" height="960"><figcaption>Play the gig: clean blends and drops keep the crowd up</figcaption></figure>
+        <figure><img src="img/screenshot-04-sets.png" alt="Your sets: every set you record, kept on your phone" loading="lazy" width="540" height="960"><figcaption>Your sets: every set you record, kept on your phone</figcaption></figure>
+    </section>
+    <section class="about">
+      <p><strong>Make your own beats, mix them live.</strong> A beat lab for building grooves, two decks for mixing them, and a road of gigs from a bedroom stream to the Main Stage.</p>
+      <p><strong>The Beat Lab.</strong> A 16-step sequencer with eight lanes, four synthesized kits, tempo and swing, eight save slots, and chaining to build beats into a full track. Every sound is synthesized on the phone: no samples. Share a beat as a code or file and import it on another phone.</p>
+      <p><strong>The decks and the gigs.</strong> Two decks with sync, loops, stutter, cue, a filter, a crossfader, echo and a riser. Six venues with a crowd to win; record any set and keep it in Your sets on the phone.</p>
+      <ul><li>Free to play through the first two gigs, with the Beat Lab fully open. One purchase unlocks the other four venues, three more kits, the Lead lane and the extra effects; nothing else to buy, no ads, no accounts.</li><li>Fully offline. Portrait, touch-first, with sound, reduce-motion and larger-text settings.</li><li>Your beats, sets and progress save on the device; beats and sets leave the phone only when you export them yourself.</li></ul>
+    </section>
+    <footer>
+      <a href="privacy.html">Privacy policy</a>
+    </footer>
+  </main>
+  <script>
+    // Earlier versions of this site installed the game for offline play.
+    // Registering sw.js again replaces that copy with one that clears it.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        if (regs.length) navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>

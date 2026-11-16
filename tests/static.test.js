@@ -76,12 +76,12 @@ test('the long-term ladder and venue road are visible on the first screen', () =
 test('overlay sheets start hidden', () => {
   for (const id of ['results', 'unlock', 'settings', 'pause', 'venueSheet', 'library', 'slotSheet', 'recSheet', 'gigHud', 'setsSheet', 'shareSheet', 'importSheet']) assert.ok(/\shidden\b/.test(elementTag(id)), '#' + id + ' should start hidden');
 });
-test('monetization: one product, billing bridge contract, playtest switch, no ads', () => {
+test('monetization: one product, billing bridge contract, no playtest switch, no ads', () => {
   assert.ok(html.includes("'full_unlock'"));
   const products = html.match(/productId|PRODUCT\s*=/g) || [];
   assert.ok(products.length >= 1);
   for (const k of ['window.AndroidBilling', 'window.__billingEvent', "'ready'", "'unavailable'", "'price'", "'owned'", "'purchased'", "'pending'", "'cancelled'", "'error'"]) assert.ok(html.includes(k), 'billing: ' + k);
-  assert.ok(html.includes("GAME + '.playtest'") && html.includes("=== 'full'"), 'playtest switch');
+  assert.ok(!html.includes('.playtest') && !html.includes('Playtest') && !html.includes('ptBadge'), 'playtest switch removed for the Play build: ownership depends only on Play Billing');
   assert.ok(html.includes('The full game unlocks in the Google Play edition.'));
   assert.ok(!/[?&]dev\b|location\.search|location\.hash/.test(html), 'no URL bypass');
   assert.ok(!/\$\s?\d|\d+\.\d\d\s?(USD|usd)|€|£\d/.test(html), 'no hard-coded price in the game');

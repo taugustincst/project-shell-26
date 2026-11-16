@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Engine tests, static checks and sim
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests/engine.test.js
+      - run: node tests/static.test.js
+      - run: node sim/sim.js
