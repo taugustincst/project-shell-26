@@ -7,9 +7,9 @@ const assert = require('assert');
 
 const RAW_HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 // The More from AugustInnovations screen inlines the studio's shared catalog (js/more.js in the other
-// games) and its icons, each in its own <script> block between MORE markers. The checks below run on
-// the file with those two blocks taken out; the blocks get their own checks at the end.
-const MORE_RE = /<script>\/\* MORE:BEGIN \*\/([\s\S]*?)\/\* MORE:END \*\/<\/script>\n<script>\/\* MORE-ICONS:BEGIN \*\/([\s\S]*?)\/\* MORE-ICONS:END \*\/<\/script>\n/;
+// games) in its own <script> block between MORE markers; its icons are files in icons/more/. The checks
+// below run on the file with that block taken out; the block gets its own checks at the end.
+const MORE_RE = /<script>\/\* MORE:BEGIN \*\/([\s\S]*?)\/\* MORE:END \*\/<\/script>\n/;
 const MORE = RAW_HTML.match(MORE_RE) || [];
 const html = RAW_HTML.replace(MORE_RE, '');
 
@@ -137,10 +137,10 @@ test('the unlock is never written into saves or exports', () => {
 });
 
 // More from AugustInnovations: the inlined catalog's one outside address is the Play listing it links
-// to (opened by the phone's Play app, never loaded by the game), and its icons are data: URIs.
-test('the More catalog and its icons are inlined once each, and parse', () => {
-  assert(MORE.length === 3 && !MORE_RE.test(html), 'expected one MORE block and one MORE-ICONS block');
-  new vm.Script(MORE[1], { filename: 'more.js' }); new vm.Script(MORE[2], { filename: 'more-icons.js' });
+// to (opened by the phone's Play app, never loaded by the game), and its icons are files beside the page.
+test('the More catalog is inlined once, and parses', () => {
+  assert(MORE.length === 2 && !MORE_RE.test(html), 'expected one MORE block');
+  new vm.Script(MORE[1], { filename: 'more.js' });
 });
 test('the More catalog only links out to Play listings, and makes no network call', () => {
   const urls = MORE[1].match(/https?:\/\/[^\s'"<>)]*/g) || [];
@@ -148,10 +148,10 @@ test('the More catalog only links out to Play listings, and makes no network cal
   assert(/target="_blank" rel="noopener"/.test(MORE[1]), 'links open outside the game');
   assert(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|\bimport\s*\(|new Image\b|localStorage/.test(MORE[1]), 'network or storage API');
 });
-test('the More icons are inline PNG data: URIs only', () => {
-  const vals = MORE[2].match(/'[^']*'/g) || [];
-  assert(vals.length >= 10 && vals.every(v => /^'data:image\/png;base64,[A-Za-z0-9+/=]+'$/.test(v)));
-  assert(!/https?:\/\//.test(MORE[2]));
+test('the More icons are small PNG files in icons/more, none inlined in the page', () => {
+  assert(!/MORE-ICONS|data:image\/png/.test(RAW_HTML), 'icons inlined in index.html');
+  const dir = path.join(__dirname, '..', 'icons', 'more'), files = fs.readdirSync(dir);
+  assert(files.length >= 10 && files.every(f => /^[a-z0-9]+\.png$/.test(f) && fs.statSync(path.join(dir, f)).size <= 16384), files.join(','));
 });
 
 console.log(`static tests: ${pass} passed, ${fail} failed`);
