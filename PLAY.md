@@ -17,7 +17,7 @@
 
 The gate lands right after the Rooftop Party, the free tier's showcase gig (your own beat on the decks, two blends, a crowd held high). Its rewards (Boom Bap and Stutter) are earned there and shown as "ready in the full game". Free venues stay replayable and the Lab stays fully open.
 
-- **In-app product:** `full_unlock`, non-consumable. **Price: Tj's call at listing.** Claude's suggestion, going by Folder's value-audit ladder: $2.99 (six gigs of two to three minutes each, plus the open-ended Lab).
+- **In-app product:** `full_unlock`, non-consumable, **$2.99** (audited price, set in Play Console).
 
 ## Billing bridge (same contract as the owner's other games)
 
