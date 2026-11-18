@@ -16,6 +16,16 @@ OUT="${LAUNCH_TEST_OUT:-launch-test}"
 mkdir -p "$OUT"
 
 fail() { echo "launch-test: FAIL: $*"; exit 1; }
+# What the WebView and the app said, printed into the job log itself, for a
+# page that never reports itself loaded (the logcat artifact is not always
+# reachable): the app's and Chromium's own lines, and its processes.
+diag() {
+  echo "---- launch-test: the app's and the WebView's log lines (last 80) ----"
+  grep -E "POCKETDECKS|chromium|cr_|WebView|webview|sandboxed_process|ActivityManager.*$PKG|Choreographer.*Skipped" "$OUT/logcat.txt" | tail -80
+  echo "---- launch-test: processes ----"
+  adb shell ps -A 2>/dev/null | grep -E "$PKG|sandboxed_process|webview" || true
+  echo "----"
+}
 
 adb wait-for-device
 adb install -r "$APK" || fail "the APK did not install"
@@ -55,7 +65,7 @@ if grep -E "E POCKETDECKSWeb|POCKETDECKSWeb.*Uncaught" "$OUT/logcat.txt" | grep 
   fail "the game's script reported an error"
 fi
 READY=$(grep -o "POCKETDECKS_READY elements=[0-9]*" "$OUT/logcat.txt" | tail -1)
-[ -n "$READY" ] || fail "the game's page never finished loading (no POCKETDECKS_READY line)"
+[ -n "$READY" ] || { diag; fail "the game's page never finished loading (no POCKETDECKS_READY line)"; }
 N="${READY##*=}"
 [ "${N:-0}" -ge 10 ] || fail "the page loaded nearly empty ($N elements)"
 adb shell pidof "$PKG" >/dev/null || fail "$PKG is no longer running"
