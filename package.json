@@ -1,8 +1,8 @@
 {
   "name": "pocket-decks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/static.test.js && node sim/sim.js"
+    "test": "node tests/more.test.js && node tests/engine.test.js && node tests/static.test.js && node sim/sim.js"
   }
 }
