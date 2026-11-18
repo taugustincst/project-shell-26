@@ -126,7 +126,15 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                Log.i(TAG, TAG + "_STARTED " + url);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
+                // Logged before the element count, so a launch test can tell a
+                // page that never finished from a script too busy to answer.
+                Log.i(TAG, TAG + "_FINISHED " + url);
                 view.evaluateJavascript("document.querySelectorAll('body *').length", count ->
                         Log.i(TAG, TAG + "_READY elements=" + count + " " + url));
             }

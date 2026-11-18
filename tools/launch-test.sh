@@ -20,10 +20,21 @@ fail() { echo "launch-test: FAIL: $*"; exit 1; }
 # page that never reports itself loaded (the logcat artifact is not always
 # reachable): the app's and Chromium's own lines, and its processes.
 diag() {
-  echo "---- launch-test: the app's and the WebView's log lines (last 80) ----"
-  grep -E "POCKETDECKS|chromium|cr_|WebView|webview|sandboxed_process|ActivityManager.*$PKG|Choreographer.*Skipped" "$OUT/logcat.txt" | tail -80
+  local app web
+  app=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r')
+  web=$(adb shell ps -A 2>/dev/null | awk '/sandboxed_process/ {print $2}' | tr '\n' ' ')
+  echo "---- launch-test: page events (POCKETDECKS_STARTED, _FINISHED, _READY) ----"
+  grep -E "POCKETDECKS_(STARTED|FINISHED|READY|LOAD_ERROR|MISSING)" "$OUT/logcat.txt" || echo "(none)"
+  echo "---- launch-test: the app's own log, pid ${app:-?} (last 60) ----"
+  [ -n "$app" ] && adb logcat -d --pid="$app" | tail -60
+  for p in $web; do
+    echo "---- launch-test: WebView renderer, pid $p (last 30) ----"
+    adb logcat -d --pid="$p" | tail -30
+  done
+  echo "---- launch-test: Console and chromium lines (last 40) ----"
+  grep -E "POCKETDECKSWeb|chromium|Console" "$OUT/logcat.txt" | tail -40
   echo "---- launch-test: processes ----"
-  adb shell ps -A 2>/dev/null | grep -E "$PKG|sandboxed_process|webview" || true
+  adb shell ps -A 2>/dev/null | grep -E "$PKG|sandboxed_process" || true
   echo "----"
 }
 
