@@ -5,7 +5,14 @@ const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const RAW_HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+// The More from AugustInnovations screen inlines the studio's shared catalog (js/more.js in the other
+// games) in its own <script> block between MORE markers; its icons are files in icons/more/. The checks
+// below run on the file with that block taken out; the block gets its own checks at the end.
+const MORE_RE = /<script>\/\* MORE:BEGIN \*\/([\s\S]*?)\/\* MORE:END \*\/<\/script>\n/;
+const MORE = RAW_HTML.match(MORE_RE) || [];
+const html = RAW_HTML.replace(MORE_RE, '');
+
 let pass = 0, fail = 0;
 function test(name, fn) {
   try { fn(); pass++; }
@@ -127,6 +134,24 @@ test('the unlock is never written into saves or exports', () => {
   const eng = html.slice(html.indexOf('/* ENGINE:BEGIN */'), html.indexOf('/* ENGINE:END */'));
   const exp = eng.slice(eng.indexOf('function packPattern'), eng.indexOf('function importCode'));
   assert.ok(!/unlock|owned/i.test(exp), 'exports must not carry the unlock');
+});
+
+// More from AugustInnovations: the inlined catalog's one outside address is the Play listing it links
+// to (opened by the phone's Play app, never loaded by the game), and its icons are files beside the page.
+test('the More catalog is inlined once, and parses', () => {
+  assert(MORE.length === 2 && !MORE_RE.test(html), 'expected one MORE block');
+  new vm.Script(MORE[1], { filename: 'more.js' });
+});
+test('the More catalog only links out to Play listings, and makes no network call', () => {
+  const urls = MORE[1].match(/https?:\/\/[^\s'"<>)]*/g) || [];
+  assert.deepStrictEqual(urls, ['https://play.google.com/store/apps/details?id=com.taugustincst.']);
+  assert(/target="_blank" rel="noopener"/.test(MORE[1]), 'links open outside the game');
+  assert(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|\bimport\s*\(|new Image\b|localStorage/.test(MORE[1]), 'network or storage API');
+});
+test('the More icons are small PNG files in icons/more, none inlined in the page', () => {
+  assert(!/MORE-ICONS|data:image\/png/.test(RAW_HTML), 'icons inlined in index.html');
+  const dir = path.join(__dirname, '..', 'icons', 'more'), files = fs.readdirSync(dir);
+  assert(files.length >= 10 && files.every(f => /^[a-z0-9]+\.png$/.test(f) && fs.statSync(path.join(dir, f)).size <= 16384), files.join(','));
 });
 
 console.log(`static tests: ${pass} passed, ${fail} failed`);

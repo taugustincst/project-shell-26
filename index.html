@@ -74,6 +74,13 @@ h3 { font-size: 16px; margin: 14px 0 8px; color: var(--dim); font-weight: 600; l
 .pulse { animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.04); } }
 #homeNext { width: 100%; text-align: left; }
+#btnMore { width: 100%; }
+.more-list { list-style: none; margin: 10px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.more-row { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel2); color: inherit; text-decoration: none; min-height: 44px; }
+.more-row:active { transform: translateY(1px); } .more-row:focus-visible { outline: 3px solid var(--acc2); outline-offset: 2px; }
+.more-icon { width: 48px; height: 48px; border-radius: 11px; flex: none; }
+.more-text { display: flex; flex-direction: column; min-width: 0; } .more-title { font-size: 1rem; } .more-hook { font-size: 14px; color: var(--dim); line-height: 1.35; }
+.more-store { font-size: 14px; font-weight: 700; letter-spacing: .04em; color: var(--acc); margin-top: 2px; }
 /* lab */
 .transport { display: flex; gap: 8px; align-items: center; }
 .transport .play { min-width: 64px; font-size: 20px; }
@@ -219,6 +226,7 @@ button.danger { border-color: var(--bad); color: var(--bad); }
         <div class="muted">Make your own beats in the Lab. Mix them live on two decks. Play your way from a bedroom stream to the Main Stage.</div>
         <div id="homeNext" class="card"></div>
         <button id="btnResume" class="primary" hidden>Resume your gig</button>
+        <button id="btnMore" class="ghost" hidden>More from AugustInnovations</button>
       </div>
     </section>
 
@@ -338,6 +346,14 @@ button.danger { border-color: var(--bad); color: var(--bad); }
   <div class="actions"><button id="btnReset" class="ghost">Reset progress</button></div>
   <p class="tiny muted">Pocket Decks by AugustInnovations. Every sound is made on your phone as you play: no samples, no ads, no network. Your beats and sets stay on this device unless you share them.</p>
   <div class="actions"><button id="btnSettingsClose" class="primary">Done</button></div>
+</div></div>
+
+<!-- More from AugustInnovations: opened from the home screen only, never in the Lab, on the decks or at a gig -->
+<div id="more" class="sheet" hidden><div class="body">
+  <h2>More from AugustInnovations</h2>
+  <p class="muted">Our other games. Tap one to see it on Google Play.</p>
+  <ul class="more-list" id="moreList"></ul>
+  <div class="actions"><button id="btnMoreClose" class="primary">Done</button></div>
 </div></div>
 
 <script>
@@ -1117,6 +1133,71 @@ var Engine = (function () {
 })();
 /* ENGINE:END */
 </script>
+<script>/* MORE:BEGIN */
+/* More from AugustInnovations: the studio's other games, each linked to its
+   Google Play listing. No prices, no ads, no tracking: the screen makes no
+   network call of its own and records nothing. It lives in the main menu only,
+   never inside play, which is what keeps the "Contains ads" answer at No.
+
+   A title shows only while `live` is true. Turn it on once its listing is
+   public, or the link opens Play's "not found" page. The 16+ Night Shift is
+   left out on purpose, because these games are rated for younger players,
+   and so is Bubble Pop for Kids, whose Families listing needs a parental
+   gate before any link out. Same file in every game. */
+(function (root) {
+  'use strict';
+  var PLAY = 'https://play.google.com/store/apps/details?id=com.taugustincst.';
+  var CATALOG = [
+    { id: 'elderon', title: 'Elderon', hook: 'Tactical RPG: tempo turns, jobs, height and facing. Offline, no ads.', tags: ['strategy', 'rpg'], live: true },
+    { id: 'ironhold', title: 'Ironhold Tower Defense', hook: 'Offline tower defense: 120 waves, 3 maps, 5 towers, bosses. No ads.', tags: ['strategy'], live: true },
+    { id: 'lostproperty', title: 'Lost Property Office', hook: 'Every lost thing has a story. Check claims against the log and stamp.', tags: ['deduction', 'story', 'cozy'], live: true },
+    { id: 'apothecary', title: 'The Night Apothecary', hook: 'Diagnose by description. A deduction shop game: 30 nights, 40 herbs, 3 endings.', tags: ['deduction', 'shop', 'story', 'cozy'], live: true },
+    { id: 'mended', title: 'Mended: Repair Shop', hook: "Run your own repair shop. Diagnose, quote, order parts and win a street's trust.", tags: ['deduction', 'shop', 'cozy'], live: true },
+    { id: 'keepthelight', title: 'Keep the Light', hook: 'An incremental that ends. One lighthouse, 1890 to 1990, a century in a logbook.', tags: ['incremental', 'story', 'cozy'], live: true },
+    { id: 'openstall', title: 'Open Stall: Market Builder', hook: 'Lay out a market stall, find the combos, and buy the shop on the square.', tags: ['shop', 'builder', 'cozy'], live: true },
+    { id: 'cartographer', title: "Cartographer's Apprentice", hook: 'Not a quiz. A geography deduction game: evidence, atlas, expedition, career.', tags: ['deduction', 'educational'], live: true },
+    { id: 'blackpool', title: 'The 9:15 to Blackpool', hook: 'Casebook deduction. Six closed cases, real evidence, confirmed in threes.', tags: ['deduction', 'mystery', 'story'], live: false },
+    { id: 'nightbakery', title: 'Night Bakery', hook: 'Run a midnight bakery: bake, brew and serve the night owls before dawn.', tags: ['shop', 'cozy', 'story'], live: false },
+    { id: 'harbormaster', title: 'Harbor Master', hook: 'Bring the ships in, turn them around, and beat the tide.', tags: ['strategy', 'builder'], live: false },
+    { id: 'seedandsprout', title: 'Seed & Sprout', hook: 'Grow, crossbreed and sell flowers. Chase the legendary Moon Orchid.', tags: ['cozy', 'builder'], live: true },
+    { id: 'nighttrain', title: 'The Night Train', hook: 'Steward a sleeper train north: berths, tea, and the Aurora Express.', tags: ['story', 'cozy', 'shop'], live: true },
+    { id: 'clockworkpost', title: 'Clockwork Post', hook: 'Set the gears, route the parcels, beat the whistle.', tags: ['puzzle'], live: false },
+    { id: 'pocketdecks', title: 'Pocket Decks', hook: 'Make your own beats, mix live on two decks, climb to the Main Stage.', tags: ['music'], live: true }
+  ];
+
+  function url(t) { return PLAY + t.id; }
+  function icon(t) { return 'icons/more/' + t.id + '.png'; }
+
+  // The other live titles, nearest genre first: most shared tags, then catalog order.
+  function listFor(selfId, catalog) {
+    catalog = catalog || CATALOG;
+    var me = catalog.filter(function (t) { return t.id === selfId; })[0];
+    var mine = me ? me.tags : [];
+    return catalog
+      .map(function (t, i) { return { t: t, i: i, n: t.tags.filter(function (g) { return mine.indexOf(g) >= 0; }).length }; })
+      .filter(function (x) { return x.t.id !== selfId && x.t.live && x.t.hook; })
+      .sort(function (a, b) { return b.n - a.n || a.i - b.i; })
+      .map(function (x) { return x.t; });
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // Fills `el` with one row per title and returns how many there are.
+  function render(el, selfId) {
+    var list = listFor(selfId);
+    el.innerHTML = list.map(function (t) {
+      return '<li><a class="more-row" href="' + esc(url(t)) + '" target="_blank" rel="noopener" data-app="' + esc(t.id) + '">' +
+        '<img class="more-icon" src="' + esc(icon(t)) + '" alt="" width="48" height="48">' +
+        '<span class="more-text"><b class="more-title">' + esc(t.title) + '</b><span class="more-hook">' + esc(t.hook) + '</span>' +
+        '<span class="more-store">Google Play</span></span></a></li>';
+    }).join('');
+    return list.length;
+  }
+
+  var api = { CATALOG: CATALOG, listFor: listFor, url: url, icon: icon, render: render };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.MoreGames = api;
+})(this);
+/* MORE:END */</script>
 <script>
 (function () {
   'use strict';
@@ -2267,8 +2348,29 @@ var Engine = (function () {
     if (mode === 'lab') renderLab(); else if (mode === 'decks') renderDecks(); else if (mode === 'gigs') renderGigs(); else renderHome();
   }
 
+  // ---------- More from AugustInnovations (home screen only, never in the Lab, on the decks or at a gig) ----------
+  // The shared catalog (window.MoreGames) sits in its own script block above; the icons are small PNGs in
+  // icons/more/, packed into the app. The rows are built the first time the sheet opens, so loading the game does no extra work.
+  function moreGamesCount(selfId) { return window.MoreGames ? window.MoreGames.listFor(selfId).length : 0; }
+  function renderMoreGames(el, selfId) {
+    var M = window.MoreGames;
+    if (!M || !el || el.querySelector('li')) return;
+    var list = M.listFor(selfId);
+    list.forEach(function (t) {
+      var li = document.createElement('li'), a = document.createElement('a'), im = document.createElement('img');
+      var tx = document.createElement('span'), b = document.createElement('b'), hk = document.createElement('span'), st = document.createElement('span');
+      a.className = 'more-row'; a.setAttribute('href', M.url(t)); a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); a.setAttribute('data-app', t.id);
+      im.className = 'more-icon'; im.alt = ''; im.width = 48; im.height = 48; im.setAttribute('decoding', 'async'); im.onerror = function () { im.style.visibility = 'hidden'; }; im.setAttribute('src', M.icon(t));
+      tx.className = 'more-text'; b.className = 'more-title'; b.textContent = t.title; hk.className = 'more-hook'; hk.textContent = t.hook;
+      st.className = 'more-store'; st.textContent = 'Google Play';
+      tx.appendChild(b); tx.appendChild(hk); tx.appendChild(st); a.appendChild(im); a.appendChild(tx); li.appendChild(a); el.appendChild(li);
+    });
+  }
   // ================= wiring =================
   function wire() {
+    $('btnMore').hidden = !moreGamesCount('pocketdecks');
+    $('btnMore').onclick = function () { renderMoreGames($('moreList'), 'pocketdecks'); if (mode === 'home' && !gig) showSheet('more'); };
+    $('btnMoreClose').onclick = function () { $('more').hidden = true; };
     $('btnStart').onclick = function () {
       if (!ensureAudio()) { toast('Sound is not available on this device.'); setTab('Lab'); return; }
       setTab('Lab'); startLab(false);

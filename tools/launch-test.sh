@@ -16,13 +16,43 @@ OUT="${LAUNCH_TEST_OUT:-launch-test}"
 mkdir -p "$OUT"
 
 fail() { echo "launch-test: FAIL: $*"; exit 1; }
+# What the WebView and the app said, printed into the job log itself, for a
+# page that never reports itself loaded (the logcat artifact is not always
+# reachable): the app's and Chromium's own lines, and its processes.
+diag() {
+  local app web
+  app=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r')
+  web=$(adb shell ps -A 2>/dev/null | awk '/sandboxed_process/ {print $2}' | tr '\n' ' ')
+  echo "---- launch-test: page events (POCKETDECKS_STARTED, _FINISHED, _READY) ----"
+  grep -E "POCKETDECKS_(STARTED|FINISHED|READY|LOAD_ERROR|MISSING)" "$OUT/logcat.txt" || echo "(none)"
+  echo "---- launch-test: the app's own log, pid ${app:-?} (last 60) ----"
+  [ -n "$app" ] && adb logcat -d --pid="$app" | tail -60
+  for p in $web; do
+    echo "---- launch-test: WebView renderer, pid $p (last 30) ----"
+    adb logcat -d --pid="$p" | tail -30
+  done
+  echo "---- launch-test: Console and chromium lines (last 40) ----"
+  grep -E "POCKETDECKSWeb|chromium|Console" "$OUT/logcat.txt" | tail -40
+  echo "---- launch-test: processes ----"
+  adb shell ps -A 2>/dev/null | grep -E "$PKG|sandboxed_process" || true
+  echo "----"
+}
 
 adb wait-for-device
 adb install -r "$APK" || fail "the APK did not install"
 adb shell pm clear "$PKG" >/dev/null 2>&1 || true
 adb logcat -c
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
-sleep 15
+# Wait for the page rather than a fixed time: the first WebView start on a
+# cold emulator can take longer than any fixed sleep, and a fixed wait raced it.
+# Poll logcat every 2 s, for up to 60 s, until the page reports itself loaded
+# or the app crashes, hangs or fails to load; then settle 3 s, so an error the
+# page logs just after loading is still caught, and run the same checks.
+for _ in $(seq 1 30); do
+  sleep 2
+  adb logcat -d > "$OUT/logcat.txt"; grep -qE "POCKETDECKS_READY elements=|POCKETDECKS_LOAD_ERROR|FATAL EXCEPTION|ANR in $PKG" "$OUT/logcat.txt" && break
+done
+sleep 3
 adb exec-out screencap -p > "$OUT/after-launch.png" || true
 adb logcat -d > "$OUT/logcat.txt"
 adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | tee "$OUT/resumed.txt" || true
@@ -46,7 +76,7 @@ if grep -E "E POCKETDECKSWeb|POCKETDECKSWeb.*Uncaught" "$OUT/logcat.txt" | grep 
   fail "the game's script reported an error"
 fi
 READY=$(grep -o "POCKETDECKS_READY elements=[0-9]*" "$OUT/logcat.txt" | tail -1)
-[ -n "$READY" ] || fail "the game's page never finished loading (no POCKETDECKS_READY line)"
+[ -n "$READY" ] || { diag; fail "the game's page never finished loading (no POCKETDECKS_READY line)"; }
 N="${READY##*=}"
 [ "${N:-0}" -ge 10 ] || fail "the page loaded nearly empty ($N elements)"
 adb shell pidof "$PKG" >/dev/null || fail "$PKG is no longer running"
